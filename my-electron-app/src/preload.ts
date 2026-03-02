@@ -181,7 +181,7 @@ contextBridge.exposeInMainWorld("systematicBridge", {
     ipcRenderer.invoke("systematic:adjudicate-conflicts", payload),
   executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number; prismaFlowImagePath?: string }) =>
     ipcRenderer.invoke("systematic:execute-steps-1-15", payload),
-  fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) =>
+  fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string; temporal?: boolean }) =>
     ipcRenderer.invoke("systematic:full-run", payload)
 });
 

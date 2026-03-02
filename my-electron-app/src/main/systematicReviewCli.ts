@@ -14,12 +14,20 @@ function usage(): string {
     "  ts-node src/main/systematicReviewCli.ts audit <runDir>",
     "  ts-node src/main/systematicReviewCli.ts remediate <runDir>",
     "  ts-node src/main/systematicReviewCli.ts steps-1-15 <runDir> <checklistPath> [reviewerCount] [prismaFlowImagePath]",
-    "  ts-node src/main/systematicReviewCli.ts full-run <runDir> <checklistPath> [maxIterations] [prismaFlowImagePath] [collectionName]"
+    "  ts-node src/main/systematicReviewCli.ts full-run <runDir> <checklistPath> [maxIterations] [prismaFlowImagePath] [collectionName] [temporal]"
   ].join("\n");
 }
 
+function parseOptionalBoolean(raw: string | undefined): boolean | undefined {
+  const txt = String(raw || "").trim();
+  if (!txt) return undefined;
+  if (/^(1|true|yes|on|temporal|chronological)$/i.test(txt)) return true;
+  if (/^(0|false|no|off)$/i.test(txt)) return false;
+  return undefined;
+}
+
 async function main(): Promise<void> {
-  const [cmd, runDirRaw, checklistRaw, iterRaw, prismaFlowImageRaw, collectionNameRaw] = process.argv.slice(2);
+  const [cmd, runDirRaw, checklistRaw, iterRaw, prismaFlowImageRaw, collectionNameRaw, temporalRaw] = process.argv.slice(2);
   const runDir = runDirRaw ? path.resolve(runDirRaw) : "";
   const checklistPath = checklistRaw ? path.resolve(checklistRaw) : "";
 
@@ -69,7 +77,8 @@ async function main(): Promise<void> {
       checklistPath,
       maxIterations: Number(iterRaw || 3),
       prismaFlowImagePath: prismaFlowImageRaw ? path.resolve(prismaFlowImageRaw) : "",
-      collectionName: String(collectionNameRaw || "").trim()
+      collectionName: String(collectionNameRaw || "").trim(),
+      temporal: parseOptionalBoolean(temporalRaw)
     });
     console.log(JSON.stringify(out, null, 2));
     process.exit(out.status === "ok" ? 0 : 1);

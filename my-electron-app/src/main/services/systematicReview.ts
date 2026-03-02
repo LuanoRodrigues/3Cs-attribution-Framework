@@ -42,7 +42,14 @@ export type PrismaComplianceReport = {
 type SystematicState = {
   schema?: string;
   collection?: { name?: string; key?: string; itemsCount?: number };
-  protocol?: { researchQuestions?: string[]; inclusionCriteria?: string[]; exclusionCriteria?: string[]; locked?: boolean; version?: number };
+  protocol?: {
+    researchQuestions?: string[];
+    inclusionCriteria?: string[];
+    exclusionCriteria?: string[];
+    temporal?: boolean;
+    locked?: boolean;
+    version?: number;
+  };
   reviewTeam?: { reviewerCount?: number; reviewers?: Array<{ id?: string; label?: string }> };
   prisma?: { flow?: Record<string, number> };
   screening?: {
@@ -157,6 +164,27 @@ const stripTags = (value: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
+const decodeHtmlEntities = (value: string): string =>
+  String(value || "")
+    .replace(/&#x([0-9a-f]+);/gi, (_m, hex: string) => {
+      const cp = Number.parseInt(hex, 16);
+      if (!Number.isFinite(cp)) return "";
+      const safeCp = Math.min(0x10ffff, Math.max(0, cp));
+      return String.fromCodePoint(safeCp);
+    })
+    .replace(/&#([0-9]+);/g, (_m, dec: string) => {
+      const cp = Number.parseInt(dec, 10);
+      if (!Number.isFinite(cp)) return "";
+      const safeCp = Math.min(0x10ffff, Math.max(0, cp));
+      return String.fromCodePoint(safeCp);
+    })
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'");
+
 const safeReadJson = <T>(filePath: string, fallback: T): T => {
   try {
     if (!fs.existsSync(filePath)) return fallback;
@@ -171,6 +199,16 @@ const safeReadJson = <T>(filePath: string, fallback: T): T => {
 const safeWriteJson = (filePath: string, value: unknown): void => {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf-8");
+};
+
+const dbg = (fn: string, msg: string): void => {
+  console.debug(`[systematicReview.ts][${fn}][debug] ${msg}`);
+};
+
+const fmtMs = (ms: number): string => {
+  const n = Number(ms || 0);
+  if (!Number.isFinite(n) || n < 1000) return `${Math.max(0, Math.trunc(n))}ms`;
+  return `${(n / 1000).toFixed(2)}s`;
 };
 
 const PRISMA_FLOW_PNG_NAME = "flow_prisma_attribution of cyberattacks.png";
@@ -747,6 +785,14 @@ function extractSynthesisHtmlPathFromManifest(manifest: Record<string, unknown> 
   return pathRaw ? path.resolve(pathRaw) : "";
 }
 
+function synthesisManifestIsFallback(manifest: Record<string, unknown> | null | undefined): boolean {
+  if (!manifest || typeof manifest !== "object") return false;
+  const root = manifest as Record<string, unknown>;
+  if (root.fallback === true) return true;
+  const schema = cleanText(root.schema || "").toLowerCase();
+  return schema.includes("fallback");
+}
+
 function assertNoPlaceholders(text: string, label: string): void {
   const failures = PLACEHOLDER_PATTERNS.filter((rx) => rx.test(text || "")).map((rx) => rx.source);
   if (failures.length) {
@@ -755,26 +801,82 @@ function assertNoPlaceholders(text: string, label: string): void {
 }
 
 function htmlToMarkdownMinimal(htmlText: string): string {
-  const txt = String(htmlText || "");
-  const titleMatch = txt.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  const title = cleanText(stripTags(titleMatch?.[1] || "Systematic Review"));
-  const sectionMatches = Array.from(txt.matchAll(/<section[^>]*id="([^"]+)"[^>]*>[\s\S]*?<h2[^>]*>([\s\S]*?)<\/h2>[\s\S]*?<div[^>]*class="sec"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<\/section>/gi));
-  const lines: string[] = [`# ${title}`];
-  if (!sectionMatches.length) {
-    lines.push("");
-    lines.push(stripTags(txt));
-    return lines.join("\n").trim();
+  const raw = String(htmlText || "");
+  const titleFromHtml = cleanText(
+    stripTags(raw.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "")
+  );
+  const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  let txt = String(bodyMatch?.[1] || raw);
+  txt = txt
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+
+  txt = txt.replace(/<img\b([^>]*?)>/gi, (_m, attrs: string) => {
+    const alt = cleanText(
+      decodeHtmlEntities(attrs.match(/\balt=(["'])([\s\S]*?)\1/i)?.[2] || "")
+    );
+    const src = cleanText(
+      decodeHtmlEntities(attrs.match(/\bsrc=(["'])([\s\S]*?)\1/i)?.[2] || "")
+    );
+    if (!alt && !src) return "";
+    return `\n![${alt || "image"}](${src || ""})\n`;
+  });
+
+  txt = txt
+    .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, (_m, inner: string) => cleanText(stripTags(inner)))
+    .replace(/<span\b[^>]*id=(["'])dqid-([^"']+)\1[^>]*>[\s\S]*?<\/span>/gi, (_m, _q, id: string) => ` [dqid:${cleanText(id)}] `);
+
+  const headingToMarkdown = (tag: string, prefix: string): void => {
+    const rx = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "gi");
+    txt = txt.replace(rx, (_m, inner: string) => {
+      const value = cleanText(decodeHtmlEntities(stripTags(inner)));
+      return value ? `\n${prefix} ${value}\n` : "\n";
+    });
+  };
+  headingToMarkdown("h1", "#");
+  headingToMarkdown("h2", "##");
+  headingToMarkdown("h3", "###");
+  headingToMarkdown("h4", "####");
+  headingToMarkdown("h5", "#####");
+  headingToMarkdown("h6", "######");
+
+  txt = txt
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<hr\b[^>]*>/gi, "\n---\n")
+    .replace(/<li[^>]*>/gi, "\n- ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/?(ul|ol)\b[^>]*>/gi, "\n")
+    .replace(/<\/?(figure|figcaption|section|article)\b[^>]*>/gi, "\n")
+    .replace(/<blockquote\b[^>]*>/gi, "\n> ")
+    .replace(/<\/blockquote>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<\/?(div|main|header|footer)\b[^>]*>/gi, "\n")
+    .replace(/<table\b[^>]*>/gi, "\n")
+    .replace(/<\/table>/gi, "\n")
+    .replace(/<tr\b[^>]*>/gi, "\n| ")
+    .replace(/<\/tr>/gi, " |\n")
+    .replace(/<t[dh]\b[^>]*>/gi, "")
+    .replace(/<\/t[dh]>/gi, " | ");
+
+  txt = decodeHtmlEntities(txt).replace(/<[^>]+>/g, " ");
+  const roughLines = txt
+    .split(/\r?\n/g)
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .map((line) => line.replace(/\s+\|\s+/g, " | ").replace(/\|+\s*$/g, "|"))
+    .map((line) => line.replace(/^\|\s*\|$/, ""))
+    .filter((line) => line !== "");
+
+  const lines: string[] = [];
+  if (titleFromHtml) lines.push(`# ${titleFromHtml}`);
+  for (const line of roughLines) {
+    if (lines.length && lines[lines.length - 1] === "" && line === "") continue;
+    lines.push(line);
   }
-  for (const m of sectionMatches) {
-    const id = cleanText(m[1] || "");
-    const h2 = cleanText(stripTags(m[2] || id || "Section"));
-    const body = String(m[3] || "").replace(/<\/p>\s*<p[^>]*>/gi, "\n\n").replace(/<br\s*\/?>/gi, "\n");
-    lines.push("");
-    lines.push(`## ${h2}`);
-    lines.push(`<!-- section-id: ${id} -->`);
-    lines.push(stripTags(body));
-  }
-  return lines.join("\n").trim();
+  if (!lines.length) return titleFromHtml ? `# ${titleFromHtml}` : "";
+  if (lines[0].startsWith("# ")) return lines.join("\n").trim();
+  return titleFromHtml ? `# ${titleFromHtml}\n\n${lines.join("\n").trim()}` : lines.join("\n").trim();
 }
 
 function ensurePrismaFigureEmbedded(htmlText: string, prismaBasename: string): string {
@@ -791,14 +893,22 @@ function runBatchSystematicSynthesis(
   runDir: string,
   state: SystematicState,
   prismaFlowImagePath?: string,
-  collectionName?: string
+  collectionName?: string,
+  temporal?: boolean
 ): { status: "ok"; manifest: Record<string, unknown> } | { status: "error"; message: string } {
+  const t0 = Date.now();
+  dbg(
+    "runBatchSystematicSynthesis",
+    `start runDir=${runDir} collection=${cleanText(collectionName || state.collection?.name || state.collection?.key || "")}`
+  );
   const repoRoot = resolveRepoRootForResearchPipeline();
   if (!repoRoot) {
+    dbg("runBatchSystematicSynthesis", "error repo_root_unresolved");
     return { status: "error", message: "Unable to resolve repository root for Research batch pipeline." };
   }
   const collectionJsonPath = resolveCollectionJsonPathForRun(runDir, state, collectionName);
   if (!collectionJsonPath) {
+    dbg("runBatchSystematicSynthesis", `error missing_collection_json runDir=${runDir}`);
     return {
       status: "error",
       message: collectionName
@@ -807,6 +917,7 @@ function runBatchSystematicSynthesis(
     };
   }
   const scriptPath = path.join(repoRoot, "Research", "pipeline", "run_phase2_systematic_template.py");
+  const resultJsonPath = path.join(runDir, "systematic_synthesis_result.json");
   const args = [
     scriptPath,
     "--collection-json",
@@ -814,34 +925,82 @@ function runBatchSystematicSynthesis(
     "--model",
     "gpt-5-mini",
     "--section-single-batch",
+    "--result-json-path",
+    resultJsonPath,
   ];
+  const rqList = Array.isArray(state.protocol?.researchQuestions)
+    ? state.protocol?.researchQuestions.map((x) => cleanText(x)).filter(Boolean)
+    : [];
+  if (rqList.length > 0) {
+    args.push("--research-questions-json", JSON.stringify(rqList));
+  }
+  const envTemporal = /^(1|true|yes|on|temporal|chronological)$/i.test(cleanText(process.env.SYSTEMATIC_TEMPORAL || ""));
+  const temporalEnabled = Boolean((typeof temporal === "boolean" ? temporal : state.protocol?.temporal) || envTemporal);
+  if (temporalEnabled) args.push("--temporal");
   const providedPrisma = cleanText(prismaFlowImagePath || "");
   if (providedPrisma) {
     args.push("--prisma-figure-path", path.resolve(providedPrisma));
   }
-  const py = spawnSync("python3", args, {
+  const timeoutRaw = cleanText(process.env.SYSTEMATIC_SYNTHESIS_TIMEOUT_MS || "");
+  const timeoutParsed = Number(timeoutRaw);
+  const timeoutMs = timeoutRaw && Number.isFinite(timeoutParsed) && timeoutParsed > 0 ? Math.max(60000, Math.trunc(timeoutParsed)) : 0;
+  const streamLogs = !/^(0|false|no)$/i.test(cleanText(process.env.SYSTEMATIC_SYNTHESIS_STREAM_LOGS || "1"));
+  dbg(
+    "runBatchSystematicSynthesis",
+    `spawn python script=${scriptPath} timeout_ms=${timeoutMs > 0 ? String(timeoutMs) : "none"} stream_logs=${String(streamLogs)} temporal=${String(temporalEnabled)}`
+  );
+  try {
+    if (fs.existsSync(resultJsonPath)) fs.unlinkSync(resultJsonPath);
+  } catch {
+    // best effort cleanup
+  }
+  const pyOpts: any = {
     cwd: repoRoot,
-    encoding: "utf-8",
-    maxBuffer: 64 * 1024 * 1024,
     env: {
       ...process.env,
       BATCH_ROOT: process.env.BATCH_ROOT || path.join(repoRoot, "tmp", "batching_files"),
       ANNOTARIUM_CACHE_DIR: process.env.ANNOTARIUM_CACHE_DIR || path.join(repoRoot, "tmp", "annotarium_cache"),
     },
-  });
+  };
+  if (streamLogs) {
+    pyOpts.stdio = ["ignore", "inherit", "inherit"];
+  } else {
+    pyOpts.encoding = "utf-8";
+    pyOpts.maxBuffer = 64 * 1024 * 1024;
+  }
+  if (timeoutMs > 0) pyOpts.timeout = timeoutMs;
+  const spawnT0 = Date.now();
+  const py = spawnSync("python3", args, pyOpts);
+  dbg(
+    "runBatchSystematicSynthesis",
+    `python_exit status=${String(py.status)} signal=${String(py.signal || "")} took=${fmtMs(Date.now() - spawnT0)}`
+  );
   if ((py.status ?? 1) !== 0) {
     const stderr = String(py.stderr || "").trim();
     const stdout = String(py.stdout || "").trim();
+    const errCode = String((py.error as NodeJS.ErrnoException | undefined)?.code || "");
+    if (errCode === "ETIMEDOUT") {
+      dbg("runBatchSystematicSynthesis", `python_timeout timeout_ms=${timeoutMs}`);
+    }
+    dbg(
+      "runBatchSystematicSynthesis",
+      `error batch_pipeline_failed stderr_tail=${cleanText(stderr.slice(-600))} stdout_tail=${cleanText(stdout.slice(-600))}`
+    );
     return { status: "error", message: `Batch systematic pipeline failed. ${stderr || stdout || "Unknown error."}` };
   }
-  const parsed = parseLastJsonObject(String(py.stdout || ""));
+  let parsed = safeReadJson<Record<string, unknown> | null>(resultJsonPath, null);
   if (!parsed) {
+    parsed = parseLastJsonObject(String(py.stdout || ""));
+  }
+  if (!parsed) {
+    dbg("runBatchSystematicSynthesis", "error no_parseable_manifest_json");
     return { status: "error", message: "Batch systematic pipeline completed but returned no parseable JSON manifest." };
   }
   if (prismaFlowImagePath) {
     state.artifacts = state.artifacts || {};
     state.artifacts.prismaFlowPngPath = cleanText(prismaFlowImagePath);
   }
+  dbg("runBatchSystematicSynthesis", `done took=${fmtMs(Date.now() - t0)}`);
   return { status: "ok", manifest: parsed };
 }
 
@@ -1481,6 +1640,7 @@ export function auditPrisma(runDir: string): { status: "ok"; report: PrismaCompl
 export function remediatePrisma(runDir: string): { status: "ok"; updated: number; paths: SystematicPaths } | { status: "error"; message: string } {
   try {
     const paths = resolveSystematicPaths(runDir);
+    const existingHtml = fs.existsSync(paths.paperHtmlPath) ? fs.readFileSync(paths.paperHtmlPath, "utf-8") : "";
     const report = safeReadJson<PrismaComplianceReport>(paths.complianceReportJsonPath, {
       schema: "prisma_compliance_report_v1",
       createdAt: "",
@@ -1543,8 +1703,18 @@ export function remediatePrisma(runDir: string): { status: "ok"; updated: number
     (model as any).updatedAt = new Date().toISOString();
     (model as any).sections = sections;
     safeWriteJson(paths.paperModelPath, model);
-    fs.writeFileSync(paths.paperMarkdownPath, renderPaperMarkdown(model), "utf-8");
-    fs.writeFileSync(paths.paperHtmlPath, renderPaperHtml(model), "utf-8");
+    const preserveRenderedHtml =
+      /data-dqid=/i.test(existingHtml) &&
+      !PLACEHOLDER_PATTERNS.some((rx) => rx.test(existingHtml || ""));
+    if (preserveRenderedHtml) {
+      const prismaBase = path.basename(cleanText((state as any)?.artifacts?.prismaFlowPngPath || PRISMA_FLOW_PNG_NAME));
+      const htmlOut = ensurePrismaFigureEmbedded(existingHtml, prismaBase);
+      fs.writeFileSync(paths.paperHtmlPath, htmlOut, "utf-8");
+      fs.writeFileSync(paths.paperMarkdownPath, htmlToMarkdownMinimal(htmlOut), "utf-8");
+    } else {
+      fs.writeFileSync(paths.paperMarkdownPath, renderPaperMarkdown(model), "utf-8");
+      fs.writeFileSync(paths.paperHtmlPath, renderPaperHtml(model), "utf-8");
+    }
     safeWriteJson(paths.remediationLogPath, {
       schema: "prisma_remediation_log_v1",
       at: new Date().toISOString(),
@@ -1647,7 +1817,10 @@ function writeFinalQaChecklist(paths: SystematicPaths, report: PrismaComplianceR
   return { score, checks };
 }
 
-function writeReproducibilityArtifacts(paths: SystematicPaths, payload: { checklistPath: string; maxIterations: number; minPassPct: number; maxFail: number }): void {
+function writeReproducibilityArtifacts(
+  paths: SystematicPaths,
+  payload: { checklistPath: string; maxIterations: number; minPassPct: number; maxFail: number; temporal?: boolean }
+): void {
   safeWriteJson(paths.reproducibilityConfigPath, {
     schema: "systematic_reproducibility_config_v1",
     createdAt: new Date().toISOString(),
@@ -1655,7 +1828,8 @@ function writeReproducibilityArtifacts(paths: SystematicPaths, payload: { checkl
     checklistPath: payload.checklistPath,
     maxIterations: payload.maxIterations,
     minPassPct: payload.minPassPct,
-    maxFail: payload.maxFail
+    maxFail: payload.maxFail,
+    temporal: Boolean(payload.temporal)
   });
   const script = [
     "#!/usr/bin/env bash",
@@ -1665,9 +1839,10 @@ function writeReproducibilityArtifacts(paths: SystematicPaths, payload: { checkl
     `MAX_ITERS=${payload.maxIterations}`,
     `MIN_PASS=${payload.minPassPct}`,
     `MAX_FAIL=${payload.maxFail}`,
+    `TEMPORAL=${payload.temporal ? 1 : 0}`,
     "",
     "npm run systematic:steps-1-15 -- \"$RUN_DIR\" \"$CHECKLIST\" 2",
-    "npm run systematic:full-run -- \"$RUN_DIR\" \"$CHECKLIST\" \"$MAX_ITERS\""
+    "npm run systematic:full-run -- \"$RUN_DIR\" \"$CHECKLIST\" \"$MAX_ITERS\" \"\" \"\" \"$TEMPORAL\""
   ].join("\n");
   fs.writeFileSync(paths.reproducibilityScriptPath, script, { encoding: "utf-8", mode: 0o755 });
 }
@@ -1740,6 +1915,7 @@ export function runFullSystematicWorkflow(payload: {
   maxFail?: number;
   prismaFlowImagePath?: string;
   collectionName?: string;
+  temporal?: boolean;
 }): {
   status: "ok";
   report: PrismaComplianceReport;
@@ -1747,10 +1923,16 @@ export function runFullSystematicWorkflow(payload: {
   paths: SystematicPaths;
   synthesisPipeline?: Record<string, unknown>;
 } | { status: "error"; message: string } {
+  const t0 = Date.now();
+  dbg(
+    "runFullSystematicWorkflow",
+    `start runDir=${payload.runDir} checklist=${payload.checklistPath} max_iterations=${Number(payload.maxIterations || 3)}`
+  );
   const paths = resolveSystematicPaths(payload.runDir);
   let state = safeReadJson<SystematicState>(paths.statePath, {});
   let synthesisPipeline: Record<string, unknown> | undefined;
   if (!(state && state.collection)) {
+    dbg("runFullSystematicWorkflow", "state_missing_collection bootstrap_steps_1_15");
     const bootstrap = executeSystematicSteps1To15({
       runDir: payload.runDir,
       checklistPath: payload.checklistPath,
@@ -1758,10 +1940,26 @@ export function runFullSystematicWorkflow(payload: {
       prismaFlowImagePath: payload.prismaFlowImagePath
     });
     if (bootstrap.status !== "ok") return bootstrap;
+    dbg("runFullSystematicWorkflow", "bootstrap_completed");
     state = safeReadJson<SystematicState>(paths.statePath, {});
     if (!(state && state.collection)) {
       return { status: "error", message: `Missing systematic state/collection at ${paths.statePath} after bootstrap.` };
     }
+  }
+  const overrideRqs = loadResearchQuestionsOverride(payload.runDir);
+  if (overrideRqs.length) {
+    state.protocol = state.protocol || {};
+    state.protocol.researchQuestions = overrideRqs;
+    safeWriteJson(paths.statePath, state);
+    dbg("runFullSystematicWorkflow", `research_questions_override applied count=${overrideRqs.length}`);
+  }
+  const envTemporal = /^(1|true|yes|on|temporal|chronological)$/i.test(cleanText(process.env.SYSTEMATIC_TEMPORAL || ""));
+  const temporalEnabled = Boolean((typeof payload.temporal === "boolean" ? payload.temporal : state.protocol?.temporal) || envTemporal);
+  state.protocol = state.protocol || {};
+  if (typeof payload.temporal === "boolean" && state.protocol.temporal !== payload.temporal) {
+    state.protocol.temporal = payload.temporal;
+    safeWriteJson(paths.statePath, state);
+    dbg("runFullSystematicWorkflow", `temporal_override applied value=${String(payload.temporal)}`);
   }
   const stateCollectionName = cleanText(state.collection?.name || state.collection?.key || "");
   const requestedCollectionName = cleanText(payload.collectionName || "");
@@ -1785,17 +1983,31 @@ export function runFullSystematicWorkflow(payload: {
     payload.runDir,
     state,
     payload.prismaFlowImagePath,
-    effectiveCollectionName
+    effectiveCollectionName,
+    temporalEnabled
   );
+  dbg("runFullSystematicWorkflow", `synthesis_status=${synthesis.status}`);
   if (synthesis.status === "error") return synthesis;
   synthesisPipeline = synthesis.manifest;
+  const allowFallback = /^(1|true|yes)$/i.test(cleanText(process.env.SYSTEMATIC_ALLOW_SYNTHESIS_FALLBACK || ""));
+  if (!allowFallback && synthesisManifestIsFallback(synthesisPipeline)) {
+    dbg("runFullSystematicWorkflow", "error fallback_synthesis_disallowed");
+    return {
+      status: "error",
+      message:
+        "Systematic synthesis returned fallback output instead of a live run. " +
+        "Rerun after live synthesis completion, or explicitly allow fallback via SYSTEMATIC_ALLOW_SYNTHESIS_FALLBACK=1.",
+    };
+  }
   normalizeFlowFromAvailableEvidence(state);
   safeWriteJson(paths.statePath, state);
+  dbg("runFullSystematicWorkflow", "compose_full_paper_start");
   const composed = composeFullPaper(payload.runDir, payload.checklistPath, {
     prismaFlowImagePath: payload.prismaFlowImagePath,
     synthesisManifest: synthesisPipeline,
     allowIncomplete: false
   });
+  dbg("runFullSystematicWorkflow", `compose_full_paper_status=${composed.status}`);
   if (composed.status !== "ok") return composed;
   const maxIterations = Math.max(1, Math.min(6, Math.trunc(Number(payload.maxIterations || 3))));
   const minPassPct = Math.max(0, Math.min(100, Number(payload.minPassPct ?? 80)));
@@ -1804,6 +2016,10 @@ export function runFullSystematicWorkflow(payload: {
   const trend: Array<{ step: number; passPct: number; fail: number; partial: number }> = [];
   let latest = auditPrisma(payload.runDir);
   if (latest.status !== "ok") return latest;
+  dbg(
+    "runFullSystematicWorkflow",
+    `audit_initial fail=${Number(latest.report.fail || 0)} pass_pct=${calculatePassPct(latest.report).toFixed(2)} critical=${criticalFailures(latest.report).length}`
+  );
   trend.push({
     step: 0,
     passPct: Number(calculatePassPct(latest.report).toFixed(2)),
@@ -1815,10 +2031,15 @@ export function runFullSystematicWorkflow(payload: {
     (Number(latest.report.fail || 0) > maxFail || calculatePassPct(latest.report) < minPassPct || criticalFailures(latest.report).length > 0)
   ) {
     iterations += 1;
+    dbg("runFullSystematicWorkflow", `remediation_iteration_start step=${iterations}`);
     const rem = remediatePrisma(payload.runDir);
     if (rem.status !== "ok") return rem;
     latest = auditPrisma(payload.runDir);
     if (latest.status !== "ok") return latest;
+    dbg(
+      "runFullSystematicWorkflow",
+      `remediation_iteration_done step=${iterations} fail=${Number(latest.report.fail || 0)} pass_pct=${calculatePassPct(latest.report).toFixed(2)} critical=${criticalFailures(latest.report).length}`
+    );
     trend.push({
       step: iterations,
       passPct: Number(calculatePassPct(latest.report).toFixed(2)),
@@ -1845,6 +2066,10 @@ export function runFullSystematicWorkflow(payload: {
     }
   });
   if (Number(latest.report.fail || 0) > maxFail || calculatePassPct(latest.report) < minPassPct) {
+    dbg(
+      "runFullSystematicWorkflow",
+      `error threshold_not_met fail=${Number(latest.report.fail || 0)} pass_pct=${calculatePassPct(latest.report).toFixed(2)}`
+    );
     return {
       status: "error",
       message:
@@ -1854,6 +2079,7 @@ export function runFullSystematicWorkflow(payload: {
   }
   const critical = criticalFailures(latest.report);
   if (critical.length) {
+    dbg("runFullSystematicWorkflow", `error critical_items_unresolved count=${critical.length}`);
     return {
       status: "error",
       message: `Critical PRISMA items unresolved: ${critical.map((x) => x.itemId).join(", ")}. Final export blocked.`
@@ -1867,10 +2093,15 @@ export function runFullSystematicWorkflow(payload: {
     checklistPath: payload.checklistPath,
     maxIterations,
     minPassPct,
-    maxFail
+    maxFail,
+    temporal: temporalEnabled
   });
   writeReadinessAndReleaseNote(latest.paths, latest.report, qa.score);
   exportReleaseBundle(latest.paths);
+  dbg(
+    "runFullSystematicWorkflow",
+    `done iterations=${iterations} fail=${Number(latest.report.fail || 0)} pass_pct=${calculatePassPct(latest.report).toFixed(2)} took=${fmtMs(Date.now() - t0)}`
+  );
   return { status: "ok", report: latest.report, iterations, paths: latest.paths, synthesisPipeline };
 }
 
@@ -1887,6 +2118,50 @@ function defaultResearchQuestions(topic: string): string[] {
     `What models are used in ${t}?`,
     `What evidence types support claims in ${t}?`
   ];
+}
+
+function normalizeResearchQuestions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    const q = cleanText(item);
+    if (!q) continue;
+    const key = q.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+  }
+  return out;
+}
+
+function loadResearchQuestionsOverride(runDir: string): string[] {
+  const candidates = [
+    path.join(runDir, "research_questions.json"),
+    path.join(runDir, "inputs", "research_questions.json"),
+    path.join(runDir, "research_questions.txt")
+  ];
+  for (const fp of candidates) {
+    try {
+      if (!fs.existsSync(fp) || !fs.statSync(fp).isFile()) continue;
+      const raw = fs.readFileSync(fp, "utf-8");
+      if (fp.endsWith(".txt")) {
+        const list = raw
+          .split(/\r?\n/)
+          .map((line) => cleanText(line.replace(/^\d+\.\s*/, "")))
+          .filter(Boolean);
+        const normalized = normalizeResearchQuestions(list);
+        if (normalized.length) return normalized;
+        continue;
+      }
+      const parsed = JSON.parse(raw || "null");
+      const normalized = normalizeResearchQuestions(parsed);
+      if (normalized.length) return normalized;
+    } catch {
+      // ignore malformed local overrides
+    }
+  }
+  return [];
 }
 
 function inferItemsCountFromRunDir(runDir: string): number {
@@ -2012,8 +2287,13 @@ export function executeSystematicSteps1To15(payload: {
     if (!Number.isFinite(itemsCount) || itemsCount < 0) collection.itemsCount = 0;
     mark(2, "Validate Collection Scope", `Collection items in scope: ${Number(collection.itemsCount || 0)}.`);
 
+    const overrideRqs = loadResearchQuestionsOverride(runDir);
     const existingRqs = Array.isArray(state.protocol.researchQuestions) ? state.protocol.researchQuestions : [];
-    state.protocol.researchQuestions = existingRqs.length ? existingRqs.slice(0, 5) : defaultResearchQuestions(collectionName);
+    if (overrideRqs.length) {
+      state.protocol.researchQuestions = overrideRqs;
+    } else {
+      state.protocol.researchQuestions = existingRqs.length ? existingRqs.slice(0, 12) : defaultResearchQuestions(collectionName);
+    }
     mark(3, "Ensure Research Questions", `Research questions: ${state.protocol.researchQuestions.length}.`);
 
     const inc = Array.isArray(state.protocol.inclusionCriteria) ? state.protocol.inclusionCriteria : [];

@@ -88,7 +88,7 @@ declare global {
         message?: string;
         report?: Record<string, unknown>;
       }>;
-      fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) => Promise<{
+      fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string; temporal?: boolean }) => Promise<{
         status: string;
         message?: string;
         report?: Record<string, unknown>;

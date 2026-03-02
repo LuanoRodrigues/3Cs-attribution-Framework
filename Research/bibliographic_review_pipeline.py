@@ -31,6 +31,7 @@ from Research.systematic_review_pipeline import (
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
     _build_dqid_evidence_payload,
+    _derive_anchor_item_keys_from_html,
     _build_reference_items,
     _citation_style_instruction,
     _clean_and_humanize_section_html,
@@ -58,6 +59,7 @@ from Research.systematic_review_pipeline import (
     _write_section_cache,
 )
 from Research.pipeline.plotly_static_figures import write_bar_chart_svg, write_network_svg
+from Research.round_synthesis import RoundSynthesisCaps, run_round_synthesis, split_payloads_into_rounds, split_prompt_requests_by_bytes
 from Research.summary_utils import resolve_summary_path
 
 _NGRAM_SOURCE_WEIGHTS = {
@@ -112,6 +114,13 @@ _NGRAM_PHRASE_BLACKLIST = {
     "text assert",
     "state or",
 }
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = str(os.getenv(name, "") or "").strip()
+    if not raw:
+        return bool(default)
+    return raw.lower() in {"1", "true", "yes", "on", "y", "enabled"}
 
 
 def _iter_items(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -1163,7 +1172,404 @@ def render_bibliographic_review_from_summary(
     item_count = _safe_int(((summary.get("input") or {}).get("item_count") if isinstance(summary.get("input"), dict) else 0), 0)
     rq_lines = _rq_findings_lines(summary)
     theme_counts = _compute_theme_counts(summary)
-    dq_payload, dq_lookup = _build_dqid_evidence_payload(summary, max_rows=350)
+    dq_payload_full, dq_lookup = _build_dqid_evidence_payload(summary, max_rows=0)
+    blr_round_rows = max(50, min(5000, _safe_int(os.getenv("BIBLIOGRAPHIC_EVIDENCE_ROUND_ROWS"), 350)))
+    blr_round_bytes = max(200000, min(50000000, _safe_int(os.getenv("BIBLIOGRAPHIC_EVIDENCE_ROUND_BYTES"), 1200000)))
+    round_caps = RoundSynthesisCaps(
+        map_max_rows=blr_round_rows,
+        map_max_bytes=blr_round_bytes,
+        reduce_max_items=max(2, min(32, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_REDUCE_MAX_ITEMS"), 8))),
+        reduce_max_bytes=max(120000, min(20000000, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_REDUCE_MAX_BYTES"), 900000))),
+        max_reduce_rounds=max(1, min(24, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_MAX_REDUCE_ROUNDS"), 8))),
+        quote_chars=max(80, min(800, _safe_int(os.getenv("BIBLIOGRAPHIC_SECTION_QUOTE_CHARS"), 220))),
+    )
+    evidence_rounds = split_payloads_into_rounds(dq_payload_full, caps=round_caps)
+    dq_payload = list(evidence_rounds[0].get("rows") or []) if evidence_rounds else []
+    covered_rows = sum(int(r.get("rows_count") or 0) for r in evidence_rounds)
+    rounds_path = output_dir / "evidence_payload_rounds.json"
+    rounds_path.write_text(
+        json.dumps(
+            {
+                "schema": "bibliographic_evidence_payload_rounds_v1",
+                "collection_name": collection_name,
+                "created_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                "row_cap": int(round_caps.map_max_rows),
+                "byte_cap": int(round_caps.map_max_bytes),
+                "rows_total": len(dq_payload_full),
+                "rows_covered": int(covered_rows),
+                "round_count": len(evidence_rounds),
+                "rounds": evidence_rounds,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    round_synthesis_html = ""
+    round_synthesis_meta: dict[str, Any] = {
+        "rows_total": len(dq_payload_full),
+        "rows_covered": int(covered_rows),
+        "all_rows_covered": bool(len(dq_payload_full) == covered_rows),
+        "round_count": len(evidence_rounds),
+        "rounds_path": str(rounds_path),
+    }
+    if _env_bool("BIBLIOGRAPHIC_ROUND_SYNTHESIS_ENABLED", default=True) and len(dq_payload_full) > len(dq_payload):
+        if not os.getenv("BATCH_ROOT"):
+            os.environ["BATCH_ROOT"] = str((_repo_root() / "tmp").resolve())
+        call_models_zt = _load_call_models_zt()
+        llms_dir = _repo_root() / "python_backend_legacy" / "llms"
+        if str(llms_dir) not in sys.path:
+            sys.path.insert(0, str(llms_dir))
+        import calling_models as cm  # type: ignore
+
+        function_name = "bibliographic_review_section_writer"
+        safe_function = cm.safe_name(function_name) if hasattr(cm, "safe_name") else _safe_name(function_name)
+        batch_root = cm.get_batch_root() if hasattr(cm, "get_batch_root") else (_repo_root() / "tmp" / "batching_files" / "batches")
+        func_dir = Path(batch_root) / safe_function
+        func_dir.mkdir(parents=True, exist_ok=True)
+        round_batch_input_cap = max(1_000_000, min(150_000_000, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_BATCH_INPUT_BYTES"), 16_000_000)))
+        round_batch_req_overhead = max(512, min(50_000, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_BATCH_REQ_OVERHEAD"), 4500)))
+        round_batch_poll = max(5, min(300, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_BATCH_POLL_SECONDS"), 30)))
+        round_qa_retries = max(0, min(8, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_QA_MAX_RETRIES"), 2)))
+        round_missing_retries = max(0, min(10, _safe_int(os.getenv("BIBLIOGRAPHIC_ROUND_BATCH_MISSING_RETRIES"), 2)))
+        round_strict_qa = _env_bool("BIBLIOGRAPHIC_ROUND_STRICT_QA", default=True)
+        round_transport_logs: list[dict[str, Any]] = []
+        round_manifest_path = output_dir / "round_synthesis_batch_manifest.json"
+
+        def _now_iso() -> str:
+            return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+        def _load_manifest() -> dict[str, Any]:
+            if round_manifest_path.is_file():
+                try:
+                    data = json.loads(round_manifest_path.read_text(encoding="utf-8"))
+                    if isinstance(data, dict):
+                        shards = data.get("shards")
+                        if not isinstance(shards, dict):
+                            data["shards"] = {}
+                        return data
+                except Exception:
+                    pass
+            return {
+                "schema": "round_synthesis_batch_manifest_v1",
+                "collection_name": collection_name,
+                "function": function_name,
+                "model": model,
+                "created_at": _now_iso(),
+                "updated_at": _now_iso(),
+                "shards": {},
+            }
+
+        round_manifest = _load_manifest()
+
+        def _save_manifest() -> None:
+            round_manifest["updated_at"] = _now_iso()
+            round_manifest["collection_name"] = collection_name
+            round_manifest["function"] = function_name
+            round_manifest["model"] = model
+            if not isinstance(round_manifest.get("shards"), dict):
+                round_manifest["shards"] = {}
+            round_manifest_path.write_text(json.dumps(round_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        def _update_shard(shard_key: str, **fields: Any) -> None:
+            shards = round_manifest.setdefault("shards", {})
+            if not isinstance(shards, dict):
+                shards = {}
+                round_manifest["shards"] = shards
+            entry = shards.get(shard_key)
+            if not isinstance(entry, dict):
+                entry = {}
+            entry.update(fields)
+            entry["updated_at"] = _now_iso()
+            shards[shard_key] = entry
+            _save_manifest()
+
+        def _batch_paths_for(safe_collection: str) -> tuple[Path, Path, Path]:
+            input_file = func_dir / f"{safe_collection}_{safe_function}_input.jsonl"
+            output_file = func_dir / f"{safe_collection}_{safe_function}_output.jsonl"
+            meta_file = func_dir / f"{safe_collection}_{safe_function}_batch_metadata.json"
+            return input_file, output_file, meta_file
+
+        def _clear_batch_files(safe_collection: str) -> None:
+            for suffix in ("input.jsonl", "output.jsonl", "batch_metadata.json"):
+                fp = func_dir / f"{safe_collection}_{safe_function}_{suffix}"
+                try:
+                    if fp.exists():
+                        fp.unlink()
+                except Exception:
+                    pass
+
+        def _read_output_texts(output_file: Path, request_ids: list[str]) -> dict[str, str]:
+            if not output_file.is_file():
+                return {}
+            out: dict[str, str] = {}
+            for rid in request_ids:
+                rid_txt = str(rid or "").strip()
+                if not rid_txt:
+                    continue
+                response = cm.read_completion_results(custom_id=rid_txt, path=str(output_file), function=function_name)
+                text = _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
+                if text.strip():
+                    out[rid_txt] = text
+            return out
+
+        def _run_model_batch(requests: list[dict[str, Any]], stage_meta: dict[str, Any]) -> list[str]:
+            if not requests:
+                return []
+            stage = str(stage_meta.get("stage") or "map")
+            level = _safe_int(stage_meta.get("level"), 0)
+            request_map: dict[str, dict[str, Any]] = {}
+            for req in requests:
+                rid = str(req.get("request_id") or "").strip()
+                if rid:
+                    request_map[rid] = req
+            shards = split_prompt_requests_by_bytes(
+                requests,
+                max_input_bytes=int(round_batch_input_cap),
+                per_request_overhead_bytes=int(round_batch_req_overhead),
+            )
+            results_by_id: dict[str, str] = {}
+            for shard_idx, shard in enumerate(shards, start=1):
+                request_ids = [str(req.get("request_id") or "").strip() for req in shard if str(req.get("request_id") or "").strip()]
+                digest = hashlib.sha1(("|".join(request_ids) or f"{stage}:{level}:{shard_idx}").encode("utf-8", errors="ignore")).hexdigest()[:10]
+                shard_key = f"{stage}:l{int(level):02d}:s{int(shard_idx):03d}:{digest}"
+                shard_collection = f"{collection_name}__blr_rs_{stage}_l{level:02d}_s{shard_idx:03d}_{digest}"
+                safe_collection = cm.safe_name(shard_collection) if hasattr(cm, "safe_name") else _safe_name(shard_collection)
+                input_file, output_file, meta_file = _batch_paths_for(safe_collection)
+                attempt_logs: list[dict[str, Any]] = []
+                shard_results = _read_output_texts(output_file, request_ids)
+                missing_ids = [rid for rid in request_ids if rid not in shard_results]
+                _update_shard(
+                    shard_key,
+                    stage=stage,
+                    level=int(level),
+                    shard=int(shard_idx),
+                    digest=digest,
+                    collection=safe_collection,
+                    request_ids=request_ids,
+                    status=("completed" if not missing_ids else "pending"),
+                    total_requests=len(request_ids),
+                    read_count=len(shard_results),
+                    missing_ids=missing_ids,
+                    input_file=str(input_file),
+                    output_file=str(output_file),
+                    meta_file=str(meta_file),
+                )
+
+                if missing_ids and input_file.is_file() and meta_file.is_file():
+                    _update_shard(shard_key, status="resuming")
+                    ok_resume = cm._process_batch_for(
+                        analysis_key_suffix=function_name,
+                        section_title=safe_collection,
+                        poll_interval=int(round_batch_poll),
+                    )
+                    if ok_resume is not True:
+                        raise RuntimeError(
+                            f"Bibliographic resume batch failed stage={stage} level={level} shard={shard_idx} "
+                            f"collection={safe_collection}"
+                        )
+                    shard_results.update(_read_output_texts(output_file, missing_ids))
+                    missing_ids = [rid for rid in request_ids if rid not in shard_results]
+                    attempt_logs.append(
+                        {
+                            "attempt_type": "resume_existing",
+                            "collection": safe_collection,
+                            "missing_after": len(missing_ids),
+                        }
+                    )
+                    _update_shard(shard_key, read_count=len(shard_results), missing_ids=missing_ids)
+
+                attempt = 0
+                while missing_ids and attempt <= int(round_missing_retries):
+                    attempt += 1
+                    retry_kind = "initial_submit" if attempt == 1 else f"missing_retry_{attempt-1}"
+                    retry_req_ids = list(missing_ids)
+                    retry_digest = hashlib.sha1(
+                        ("|".join(retry_req_ids) or f"{stage}:{level}:{shard_idx}:retry:{attempt}").encode("utf-8", errors="ignore")
+                    ).hexdigest()[:8]
+                    if attempt == 1:
+                        retry_collection = shard_collection
+                    else:
+                        retry_collection = f"{shard_collection}__mr{attempt-1:02d}_{retry_digest}"
+                    retry_safe_collection = cm.safe_name(retry_collection) if hasattr(cm, "safe_name") else _safe_name(retry_collection)
+                    retry_input_file, retry_output_file, retry_meta_file = _batch_paths_for(retry_safe_collection)
+                    _clear_batch_files(retry_safe_collection)
+                    for rid in retry_req_ids:
+                        req = request_map.get(rid) or {}
+                        prompt = str(req.get("prompt") or "")
+                        if not prompt.strip():
+                            continue
+                        _ = call_models_zt(
+                            text=prompt,
+                            function=function_name,
+                            custom_id=rid,
+                            collection_name=retry_collection,
+                            model=model,
+                            ai="openai",
+                            read=False,
+                            store_only=True,
+                            cache=False,
+                        )
+                    _update_shard(
+                        shard_key,
+                        status="submitted",
+                        active_collection=retry_safe_collection,
+                        active_attempt=int(attempt),
+                        active_input_file=str(retry_input_file),
+                        active_output_file=str(retry_output_file),
+                        active_meta_file=str(retry_meta_file),
+                        missing_ids=missing_ids,
+                    )
+                    ok = cm._process_batch_for(
+                        analysis_key_suffix=function_name,
+                        section_title=retry_safe_collection,
+                        poll_interval=int(round_batch_poll),
+                    )
+                    if ok is not True:
+                        _update_shard(shard_key, status="failed", last_error=f"batch_failed attempt={attempt}")
+                        raise RuntimeError(
+                            f"Bibliographic round batch failed stage={stage} level={level} shard={shard_idx} "
+                            f"collection={retry_safe_collection}"
+                        )
+                    if not retry_output_file.is_file():
+                        _update_shard(shard_key, status="failed", last_error=f"missing_output attempt={attempt}")
+                        raise RuntimeError(
+                            f"Missing bibliographic round batch output for stage={stage} shard={shard_idx} "
+                            f"attempt={attempt}: {retry_output_file}"
+                        )
+                    shard_results.update(_read_output_texts(retry_output_file, retry_req_ids))
+                    missing_ids = [rid for rid in request_ids if rid not in shard_results]
+                    attempt_logs.append(
+                        {
+                            "attempt_type": retry_kind,
+                            "attempt": int(attempt),
+                            "collection": retry_safe_collection,
+                            "requested": len(retry_req_ids),
+                            "read_after_attempt": len(shard_results),
+                            "missing_after_attempt": len(missing_ids),
+                        }
+                    )
+                    _update_shard(
+                        shard_key,
+                        status=("completed" if not missing_ids else "retrying"),
+                        read_count=len(shard_results),
+                        missing_ids=missing_ids,
+                        attempts=int(attempt),
+                        attempt_logs=attempt_logs,
+                    )
+
+                if missing_ids:
+                    sample = ", ".join(missing_ids[:12])
+                    _update_shard(
+                        shard_key,
+                        status="failed",
+                        last_error=f"missing_outputs count={len(missing_ids)} sample={sample}",
+                        missing_ids=missing_ids,
+                    )
+                    raise RuntimeError(
+                        f"Bibliographic round synthesis shard has missing outputs after retries: stage={stage} "
+                        f"level={level} shard={shard_idx} missing={len(missing_ids)} sample={sample}"
+                    )
+
+                for rid in request_ids:
+                    text_val = str(shard_results.get(rid) or "")
+                    if text_val.strip():
+                        results_by_id[rid] = text_val
+                round_transport_logs.append(
+                    {
+                        "stage": stage,
+                        "level": int(level),
+                        "shard": int(shard_idx),
+                        "collection": safe_collection,
+                        "requests": len(shard),
+                        "request_ids": request_ids,
+                        "read_count": len(shard_results),
+                        "attempts": len(attempt_logs),
+                        "missing_retries": int(max(0, len(attempt_logs) - 1)),
+                        "attempt_logs": attempt_logs,
+                        "output_file": str(output_file),
+                        "manifest_path": str(round_manifest_path),
+                    }
+                )
+                _update_shard(
+                    shard_key,
+                    status="completed",
+                    read_count=len(shard_results),
+                    missing_ids=[],
+                    attempt_logs=attempt_logs,
+                )
+            return [str(results_by_id.get(str(req.get("request_id") or "").strip()) or "") for req in requests]
+
+        def _run_model(prompt: str, meta: dict[str, Any]) -> str:
+            stage = str(meta.get("stage") or "map")
+            rid = _safe_int(meta.get("round") or meta.get("level"), 0)
+            chunk = _safe_int(meta.get("chunk"), 0)
+            req_id = str(meta.get("request_id") or "").strip()
+            section_id = req_id or f"blr_round_synth_{stage}_{rid}_{chunk}"
+            retry_collection = f"{collection_name}__blr_retry_{stage}_{rid}_{chunk}"
+            response = _run_grouped_batch_sections(
+                collection_name=retry_collection,
+                model=model,
+                function_name=function_name,
+                section_prompts=[(section_id, prompt)],
+            ).get(section_id, "")
+            return _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
+
+        try:
+            round_result = run_round_synthesis(
+                payloads=dq_payload_full,
+                run_model=_run_model,
+                run_model_batch=_run_model_batch,
+                caps=round_caps,
+                context={
+                    "analysis_mode": "theme",
+                    "objective": "Produce bibliographic synthesis answering the review objective from all coded payloads.",
+                    "research_questions": [],
+                    "citation_style": citation_style,
+                    "require_dqid_anchors": True,
+                },
+                max_retries_per_request=int(round_qa_retries),
+                strict_qa=bool(round_strict_qa),
+            )
+            round_synthesis_html = str(round_result.get("final_text") or "").strip()
+            if round_synthesis_html:
+                round_synthesis_html = _enrich_dqid_anchors(
+                    _clean_and_humanize_section_html(_clean_llm_html(round_synthesis_html)),
+                    dq_lookup,
+                    citation_style=citation_style,
+                )
+                round_synthesis_html = _validate_section_citation_integrity(
+                    "results_overview",
+                    round_synthesis_html,
+                    dq_lookup,
+                    citation_style=citation_style,
+                )
+            if isinstance(round_result, dict):
+                round_result["batch_transport"] = {
+                    "input_cap_bytes": int(round_batch_input_cap),
+                    "request_overhead_bytes": int(round_batch_req_overhead),
+                    "poll_interval_seconds": int(round_batch_poll),
+                    "missing_retries": int(round_missing_retries),
+                    "strict_round_qa": bool(round_strict_qa),
+                    "manifest_path": str(round_manifest_path),
+                    "logs": round_transport_logs,
+                }
+            round_result_path = output_dir / "round_synthesis_result.json"
+            round_result_path.write_text(json.dumps(round_result, ensure_ascii=False, indent=2), encoding="utf-8")
+            round_synthesis_meta.update(
+                {
+                    "status": "ok",
+                    "result_path": str(round_result_path),
+                    "map_rounds": len(round_result.get("map_rounds") or []),
+                    "reduce_rounds": len(round_result.get("reduce_rounds") or []),
+                    "coverage": round_result.get("coverage") if isinstance(round_result.get("coverage"), dict) else {},
+                    "batch_transport_shards": len(round_transport_logs),
+                }
+            )
+        except Exception as exc:
+            round_synthesis_meta.update({"status": "error", "error": str(exc)})
+            if _env_bool("BIBLIOGRAPHIC_ROUND_SYNTHESIS_STRICT_FAIL", default=True):
+                raise
     items = _iter_items(summary)
     counters = _extract_counters(items)
 
@@ -1241,6 +1647,8 @@ def render_bibliographic_review_from_summary(
         "top_themes": [{_humanize_theme_tokens(k): v} for k, v in list(theme_counts.items())[:20]],
         "citation_style": citation_style,
         "evidence_payload": dq_payload,
+        "evidence_payload_rounds": round_synthesis_meta,
+        "round_synthesis_html": round_synthesis_html,
         "figures": {
             "years_top": counters["years"].most_common(10),
             "item_types_top": counters["item_types"].most_common(10),
@@ -1475,7 +1883,6 @@ def render_bibliographic_review_from_summary(
             )
         _write_section_cache(section_cache_path, section_cache_entries)
 
-    refs_html = _build_reference_items(summary, citation_style=citation_style)
     top_keywords_display = [_clean_display_term(k) for k, _ in theme_token_counts.most_common(24)]
     top_keywords_display = [k for k in top_keywords_display if k and not k.lower().startswith("author ")]
     top_theme_keywords_display = [_clean_display_term(k) for k, _ in theme_token_counts.most_common(30)]
@@ -1525,12 +1932,21 @@ def render_bibliographic_review_from_summary(
         "ai_theme_keywords_analysis": llm_sections.get("ai_theme_keywords_analysis", ""),
         "ai_corpus_text_analysis": llm_sections.get("ai_corpus_text_analysis", ""),
         "ai_science_mapping_analysis": llm_sections.get("ai_science_mapping_analysis", ""),
-        "references_list": [{"html_string": s[4:-5] if s.startswith("<li>") and s.endswith("</li>") else s} for s in refs_html],
+        "references_list": [],
         "REFERENCE_LIMIT": 200,
     }
 
     env = Environment(loader=FileSystemLoader(str(template_path.parent)), autoescape=select_autoescape(["html", "htm", "xml"]))
     template = env.get_template(template_path.name)
+    rendered_preview = template.render(**context)
+    rendered_preview = _repair_lexical_artifacts(rendered_preview)
+    rendered_preview = _demote_invalid_dqid_anchors(rendered_preview)
+    rendered_preview = _anchor_plain_author_year_citations(rendered_preview, dq_lookup, citation_style=citation_style)
+    anchor_item_keys = _derive_anchor_item_keys_from_html(rendered_preview, dq_lookup)
+    refs_html = _build_reference_items(summary, citation_style=citation_style, anchor_item_keys=anchor_item_keys)
+    context["references_list"] = [{"html_string": s[4:-5] if s.startswith("<li>") and s.endswith("</li>") else s} for s in refs_html]
+    context["references_derived_from_anchor_item_keys"] = anchor_item_keys
+
     rendered = template.render(**context)
     rendered = _repair_lexical_artifacts(rendered)
     rendered = _demote_invalid_dqid_anchors(rendered)

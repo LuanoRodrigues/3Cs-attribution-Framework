@@ -6794,7 +6794,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   );
 
-  ipcMain.handle("systematic:full-run", async (_event, payload: { runDir?: string; checklistPath?: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) => {
+  ipcMain.handle("systematic:full-run", async (_event, payload: { runDir?: string; checklistPath?: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string; temporal?: boolean }) => {
     const runDir = String(payload?.runDir || "").trim();
     const checklistPath = String(payload?.checklistPath || "").trim();
     if (!runDir || !checklistPath) {
@@ -6807,7 +6807,8 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       minPassPct: Number(payload?.minPassPct ?? 80),
       maxFail: Number(payload?.maxFail ?? 0),
       prismaFlowImagePath: String(payload?.prismaFlowImagePath || "").trim(),
-      collectionName: String(payload?.collectionName || "").trim()
+      collectionName: String(payload?.collectionName || "").trim(),
+      temporal: typeof payload?.temporal === "boolean" ? payload.temporal : undefined
     });
   });
 

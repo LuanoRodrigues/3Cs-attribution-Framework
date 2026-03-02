@@ -15564,10 +15564,11 @@ class Zotero:
             except Exception:
                 return ""
 
-        def _extract_section_and_rq_sig(req: dict) -> tuple[str, str]:
+        def _extract_section_and_rq_sig(req: dict) -> tuple[str, str, int]:
             txt = _extract_request_text(req)
             section_key = ""
             rq_sig = "none"
+            rq_count = 0
             if txt:
                 try:
                     m_section = re.search(r"\nSECTION\n(.+?)\n\n", txt, flags=re.S)
@@ -15581,9 +15582,12 @@ class Zotero:
                         rq_block = str(m_rq.group(1) or "").strip()
                         if rq_block:
                             rq_sig = hashlib.sha256(rq_block.encode("utf-8")).hexdigest()[:10]
+                            rq_lines = [ln for ln in str(rq_block).splitlines() if str(ln).strip()]
+                            numbered = [ln for ln in rq_lines if re.match(r"^\s*\d+\s*:", str(ln))]
+                            rq_count = len(numbered) if numbered else len(rq_lines)
                 except Exception:
                     rq_sig = "none"
-            return section_key, rq_sig
+            return section_key, rq_sig, int(max(0, rq_count))
 
         def _extract_response_output_text(rec: dict) -> str:
             try:
@@ -15608,7 +15612,34 @@ class Zotero:
             except Exception:
                 return ""
 
-        def _extract_evidence_rows(rec: dict) -> list[dict]:
+        def _normalize_relevant_rqs(value: Any, rq_count: int = 0) -> tuple[list[dict], list[dict]]:
+            indices: list[int] = []
+            seen: set[int] = set()
+            if isinstance(value, list):
+                for entry in value:
+                    raw_idx = entry.get("index") if isinstance(entry, dict) else entry
+                    idx_val: int | None = None
+                    if isinstance(raw_idx, int):
+                        idx_val = int(raw_idx)
+                    elif isinstance(raw_idx, str):
+                        tok = raw_idx.strip()
+                        if tok and tok.lstrip("-").isdigit():
+                            try:
+                                idx_val = int(tok)
+                            except Exception:
+                                idx_val = None
+                    if idx_val is None or idx_val in seen:
+                        continue
+                    seen.add(idx_val)
+                    indices.append(idx_val)
+            raw_rows = [{"index": idx} for idx in indices if idx >= 0]
+            if int(rq_count or 0) > 0:
+                valid_rows = [{"index": idx} for idx in indices if 0 <= idx < int(rq_count)]
+            else:
+                valid_rows = list(raw_rows)
+            return valid_rows, raw_rows
+
+        def _extract_evidence_rows(rec: dict, rq_count: int = 0) -> list[dict]:
             txt = _extract_response_output_text(rec)
             if not txt:
                 return []
@@ -15616,17 +15647,29 @@ class Zotero:
                 parsed = json.loads(txt)
             except Exception:
                 return []
+            rows_in: list[dict] = []
             if isinstance(parsed, dict):
                 ev = parsed.get("evidence")
                 if isinstance(ev, list):
-                    return [x for x in ev if isinstance(x, dict)]
-                for key in ("items", "results", "claims", "data"):
-                    arr = parsed.get(key)
-                    if isinstance(arr, list):
-                        return [x for x in arr if isinstance(x, dict)]
-            if isinstance(parsed, list):
-                return [x for x in parsed if isinstance(x, dict)]
-            return []
+                    rows_in = [x for x in ev if isinstance(x, dict)]
+                else:
+                    for key in ("items", "results", "claims", "data"):
+                        arr = parsed.get(key)
+                        if isinstance(arr, list):
+                            rows_in = [x for x in arr if isinstance(x, dict)]
+                            break
+            elif isinstance(parsed, list):
+                rows_in = [x for x in parsed if isinstance(x, dict)]
+
+            out_rows: list[dict] = []
+            for row in rows_in:
+                row_obj = dict(row)
+                rr_valid, rr_raw = _normalize_relevant_rqs(row_obj.get("relevant_rqs"), rq_count=int(rq_count or 0))
+                row_obj["relevant_rqs"] = rr_valid
+                if rr_raw and rr_raw != rr_valid:
+                    row_obj["relevant_rqs_raw"] = rr_raw
+                out_rows.append(row_obj)
+            return out_rows
 
         def _materialize_collection_outputs() -> dict:
             if not isinstance(synthesis_info, dict) or str(synthesis_info.get("status") or "") != "ok":
@@ -15654,22 +15697,15 @@ class Zotero:
                 if iks and iks not in item_keys:
                     item_keys.append(iks)
 
+            resolved_rq_count = 0
+
             def _structured_for_row(row_obj: dict) -> list[dict]:
                 merged: list[dict] = []
                 for fn in ("structured_coding_part_a", "structured_coding_part_b"):
                     rec = row_obj.get(fn)
                     if isinstance(rec, dict):
-                        merged.extend(_extract_evidence_rows(rec))
+                        merged.extend(_extract_evidence_rows(rec, rq_count=resolved_rq_count))
                 return merged
-
-            structured_by_item: dict[str, list[dict]] = {}
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                ik = str(row.get("item_key") or "").strip()
-                if not ik:
-                    continue
-                structured_by_item[ik] = _structured_for_row(row)
 
             open_fn = str(prompt_key or "").strip() or "code_pdf_page"
             open_resolved = _resolve_stage_collection_name(open_fn)
@@ -15680,7 +15716,7 @@ class Zotero:
             output_files = sorted(open_dir.glob(f"{coll_slug}_{open_slug}*output.jsonl"))
 
             cid_to_item: dict[str, str] = {}
-            cid_meta: dict[str, tuple[str, str]] = {}
+            cid_meta: dict[str, tuple[str, str, int]] = {}
             for p in input_files:
                 if not p.is_file():
                     continue
@@ -15698,8 +15734,8 @@ class Zotero:
                             if not cid:
                                 continue
                             item_key_val = _extract_item_key_from_request(req)
-                            section_key, rq_sig = _extract_section_and_rq_sig(req)
-                            cid_meta[cid] = (section_key, rq_sig)
+                            section_key, rq_sig, rq_count = _extract_section_and_rq_sig(req)
+                            cid_meta[cid] = (section_key, rq_sig, rq_count)
                             if item_key_val:
                                 cid_to_item[cid] = item_key_val
                                 continue
@@ -15716,6 +15752,7 @@ class Zotero:
 
             open_sections_by_item: dict[str, list[dict]] = {}
             rq_counts: dict[str, int] = {}
+            rq_size_counts: dict[int, int] = {}
             seen_cids: set[str] = set()
             for p in output_files:
                 if not p.is_file():
@@ -15737,10 +15774,12 @@ class Zotero:
                             ik = str(cid_to_item.get(cid) or "").strip()
                             if not ik:
                                 continue
-                            sec_key, rq_sig = cid_meta.get(cid, ("", "none"))
+                            sec_key, rq_sig, rq_count = cid_meta.get(cid, ("", "none", 0))
                             rq_tok = str(rq_sig or "none").strip().lower() or "none"
                             rq_counts[rq_tok] = int(rq_counts.get(rq_tok, 0)) + 1
-                            evidence_rows = _extract_evidence_rows(rec)
+                            if int(rq_count or 0) > 0:
+                                rq_size_counts[int(rq_count)] = int(rq_size_counts.get(int(rq_count), 0)) + 1
+                            evidence_rows = _extract_evidence_rows(rec, rq_count=int(rq_count or 0))
                             open_sections_by_item.setdefault(ik, []).append({
                                 "section_key": str(sec_key or "").strip(),
                                 "evidence": evidence_rows if isinstance(evidence_rows, list) else [],
@@ -15759,12 +15798,34 @@ class Zotero:
                     for fn in ("structured_coding_part_a", "structured_coding_part_b"):
                         rec = row.get(fn)
                         cid = str(rec.get("custom_id") or "").strip() if isinstance(rec, dict) else ""
-                        sec_key, rq_sig = cid_meta.get(cid, ("", "none"))
+                        sec_key, rq_sig, _rq_count = cid_meta.get(cid, ("", "none", 0))
                         if rq_sig and rq_sig != "none":
                             rq_parent = rq_sig
                             break
                     if rq_parent != "none":
                         break
+
+            if rq_size_counts:
+                ranked_sizes = sorted(rq_size_counts.items(), key=lambda kv: (-int(kv[1]), int(kv[0])))
+                resolved_rq_count = int(ranked_sizes[0][0])
+            if resolved_rq_count <= 0:
+                rq_file = Path.cwd() / "Research" / "Systematic_review" / collection_name_str / "research_questions.json"
+                if rq_file.is_file():
+                    try:
+                        rq_payload = json.loads(rq_file.read_text(encoding="utf-8"))
+                        if isinstance(rq_payload, list):
+                            resolved_rq_count = len([q for q in rq_payload if str(q or "").strip()])
+                    except Exception:
+                        resolved_rq_count = 0
+
+            structured_by_item: dict[str, list[dict]] = {}
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                ik = str(row.get("item_key") or "").strip()
+                if not ik:
+                    continue
+                structured_by_item[ik] = _structured_for_row(row)
 
             now_iso = datetime.utcnow().isoformat(timespec="seconds") + "Z"
             db_root = Path.cwd() / "database"
@@ -15778,6 +15839,21 @@ class Zotero:
             persisted_item_files: list[str] = []
             for ik in item_keys:
                 open_sections = open_sections_by_item.get(ik, [])
+                open_rows_flat: list[dict] = []
+                for sec in open_sections:
+                    if not isinstance(sec, dict):
+                        continue
+                    sec_key = str(sec.get("section_key") or "").strip()
+                    ev_arr = sec.get("evidence")
+                    if not isinstance(ev_arr, list):
+                        continue
+                    for ev in ev_arr:
+                        if not isinstance(ev, dict):
+                            continue
+                        ev_row = dict(ev)
+                        if sec_key and not str(ev_row.get("section_key") or "").strip():
+                            ev_row["section_key"] = sec_key
+                        open_rows_flat.append(ev_row)
                 structured_rows = structured_by_item.get(ik, [])
                 bundle = {
                     "metadata": {
@@ -15796,10 +15872,11 @@ class Zotero:
                         if isinstance(structured_rows, list) and structured_rows else []
                     ),
                     "section_open_coding": open_sections,
+                    "code_pdf_page_sections": open_sections,
                     "structured_code": structured_rows if isinstance(structured_rows, list) else [],
-                    "code_pdf_page": open_sections,
+                    "code_pdf_page": open_rows_flat,
                     "evidence_harvesting": structured_rows if isinstance(structured_rows, list) else [],
-                    "evidence_list": list(open_sections) + (structured_rows if isinstance(structured_rows, list) else []),
+                    "evidence_list": list(open_rows_flat) + (structured_rows if isinstance(structured_rows, list) else []),
                 }
                 results_by_item[ik] = bundle
                 out_fp = coded_items_dir / f"{ik}_coded.json"

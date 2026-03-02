@@ -5,9 +5,11 @@ import ast
 import html
 import json
 import multiprocessing
+import os
 import re
 import sys
 import hashlib
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,11 +19,15 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 try:
     from Research.summary_utils import resolve_summary_path
+    from Research.adaptive_prompt_context import build_adaptive_prompt_context
+    from Research.round_synthesis import RoundSynthesisCaps, run_round_synthesis, split_prompt_requests_by_bytes
 except Exception:
     _ROOT = Path(__file__).resolve().parents[1]
     if str(_ROOT) not in sys.path:
         sys.path.insert(0, str(_ROOT))
     from Research.summary_utils import resolve_summary_path
+    from Research.adaptive_prompt_context import build_adaptive_prompt_context
+    from Research.round_synthesis import RoundSynthesisCaps, run_round_synthesis, split_prompt_requests_by_bytes
 
 CITATION_STYLE_ALIASES = {
     "apa": "apa",
@@ -42,6 +48,176 @@ _QUOTE_PAGE_CACHE: dict[str, int] = {}
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
+
+
+def _dbg(fn: str, message: str) -> None:
+    print(f"[systematic_review_pipeline.py][{fn}][debug] {message}", file=sys.stderr, flush=True)
+
+
+def _env_int(name: str, default: int, *, min_value: int, max_value: int) -> int:
+    raw = str(os.getenv(name, "") or "").strip()
+    if not raw:
+        return default
+    try:
+        n = int(raw)
+    except Exception:
+        return default
+    return max(min_value, min(max_value, n))
+
+
+def _json_bytes_len(obj: Any) -> int:
+    try:
+        blob = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        blob = str(obj)
+    return len(blob.encode("utf-8"))
+
+
+def _compact_evidence_row_for_prompt(row: dict[str, Any], *, quote_chars: int) -> dict[str, Any]:
+    return {
+        "dqid": str(row.get("dqid") or ""),
+        "theme": str(row.get("theme") or ""),
+        "citation": str(row.get("citation") or ""),
+        "item_key": str(row.get("item_key") or ""),
+        "quote": str(row.get("quote") or "")[: max(60, quote_chars)],
+        "pdf_path": str(row.get("pdf_path") or ""),
+    }
+
+
+def _compact_evidence_payload_for_prompt(rows: list[dict[str, Any]], *, max_rows: int, quote_chars: int) -> list[dict[str, Any]]:
+    try:
+        row_limit = int(max_rows)
+    except Exception:
+        row_limit = len(rows)
+    if row_limit <= 0:
+        row_limit = len(rows)
+    out: list[dict[str, Any]] = []
+    for r in rows[:row_limit]:
+        if not isinstance(r, dict):
+            continue
+        out.append(_compact_evidence_row_for_prompt(r, quote_chars=quote_chars))
+    return out
+
+
+def _split_evidence_rows_into_capped_rounds(
+    rows: list[dict[str, Any]],
+    *,
+    row_cap: int,
+    byte_cap: int,
+    quote_chars: int,
+) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+    try:
+        safe_row_cap = int(row_cap)
+    except Exception:
+        safe_row_cap = 0
+    if safe_row_cap <= 0:
+        safe_row_cap = len(rows)
+    try:
+        safe_byte_cap = int(byte_cap)
+    except Exception:
+        safe_byte_cap = 0
+    if safe_byte_cap < 0:
+        safe_byte_cap = 0
+
+    rounds: list[dict[str, Any]] = []
+    current_raw: list[dict[str, Any]] = []
+    current_compact: list[dict[str, Any]] = []
+    current_bytes = 2
+
+    def _flush_current() -> None:
+        nonlocal current_raw, current_compact, current_bytes
+        if not current_raw:
+            return
+        rounds.append(
+            {
+                "round": len(rounds) + 1,
+                "rows": list(current_raw),
+                "compact_rows": list(current_compact),
+                "rows_count": len(current_raw),
+                "bytes_estimate": int(current_bytes),
+            }
+        )
+        current_raw = []
+        current_compact = []
+        current_bytes = 2
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        compact = _compact_evidence_row_for_prompt(row, quote_chars=quote_chars)
+        row_bytes = _json_bytes_len(compact) + 1
+        would_hit_row_cap = len(current_raw) >= safe_row_cap
+        would_hit_byte_cap = bool(safe_byte_cap > 0 and current_raw and (current_bytes + row_bytes > safe_byte_cap))
+        if would_hit_row_cap or would_hit_byte_cap:
+            _flush_current()
+        current_raw.append(row)
+        current_compact.append(compact)
+        current_bytes += row_bytes
+    _flush_current()
+    return rounds
+
+
+def _evidence_round_manifest_lines(
+    rounds: list[dict[str, Any]],
+    research_questions: list[str],
+) -> list[str]:
+    lines: list[str] = []
+    for round_payload in rounds:
+        rows = round_payload.get("rows")
+        if not isinstance(rows, list):
+            continue
+        round_idx = int(round_payload.get("round") or (len(lines) + 1))
+        rows_count = len(rows)
+        source_count = _source_count(rows) if rows else 0
+        top_themes = _top_theme_text(rows, limit=3) if rows else "insufficient thematic coverage"
+        years = [int(r["year"]) for r in rows if isinstance(r, dict) and isinstance(r.get("year"), int)]
+        if years:
+            year_span = f"{min(years)}-{max(years)}" if min(years) != max(years) else str(min(years))
+        else:
+            year_span = "undated"
+        rq_bits = ""
+        if research_questions:
+            assignments, unmapped = _assign_rows_to_questions(rows, research_questions)
+            ranked = sorted(
+                ((idx + 1, len(vals)) for idx, vals in assignments.items() if vals),
+                key=lambda it: (-it[1], it[0]),
+            )[:3]
+            rq_tokens = [f"RQ{idx}:{count}" for idx, count in ranked]
+            if unmapped:
+                rq_tokens.append(f"unmapped:{len(unmapped)}")
+            rq_bits = "; rq_coverage=" + (", ".join(rq_tokens) if rq_tokens else "none")
+        lines.append(
+            f"Round {round_idx:03d}: rows={rows_count}; sources={source_count}; years={year_span}; "
+            f"top_themes={top_themes}{rq_bits}"
+        )
+    return lines
+
+
+def _prepare_prompt_context_strings(
+    payload: dict[str, Any],
+    *,
+    target_tokens: int,
+    hard_cap_tokens: int,
+    label: str,
+) -> tuple[str, str]:
+    adaptive = build_adaptive_prompt_context(
+        payload,
+        target_tokens=int(target_tokens),
+        hard_cap_tokens=int(hard_cap_tokens),
+    )
+    context_obj = adaptive.get("context") if isinstance(adaptive, dict) else payload
+    if not isinstance(context_obj, dict):
+        context_obj = payload
+    meta_obj = adaptive.get("meta") if isinstance(adaptive, dict) else {}
+    ctx_json = json.dumps(context_obj, ensure_ascii=False, indent=2)
+    meta_json = json.dumps(meta_obj, ensure_ascii=False)
+    _dbg(
+        "render_systematic_review_from_summary",
+        f"{label}_context_prepared chars={len(ctx_json)} meta_chars={len(meta_json)}",
+    )
+    return ctx_json, meta_json
 
 
 def _normalize_for_match(text: str) -> str:
@@ -242,6 +418,398 @@ def _decode_html_entities(value: str) -> str:
     return s
 
 
+def _normalize_creator_name(creator: Any) -> str:
+    if isinstance(creator, dict):
+        for key in ("lastName", "family", "name", "literal"):
+            val = str(creator.get(key) or "").strip()
+            if not val:
+                continue
+            if key in {"lastName", "family"}:
+                return val
+            parts = val.replace(",", " ").split()
+            return parts[-1] if parts else val
+    s = str(creator or "").strip()
+    if not s:
+        return ""
+    parts = s.replace(",", " ").split()
+    return parts[-1] if parts else s
+
+
+def _author_tokens_from_value(value: Any) -> list[str]:
+    if isinstance(value, list):
+        tokens = [_normalize_creator_name(v) for v in value]
+        return [t for t in tokens if t]
+    if isinstance(value, dict):
+        if isinstance(value.get("creators"), list):
+            return _author_tokens_from_value(value.get("creators"))
+        token = _normalize_creator_name(value)
+        return [token] if token else []
+    s = str(value or "").strip()
+    if not s:
+        return []
+    if ";" in s:
+        parts = [p.strip() for p in s.split(";")]
+    elif "|" in s:
+        parts = [p.strip() for p in s.split("|")]
+    elif re.search(r"\band\b", s, flags=re.IGNORECASE) and "," not in s:
+        parts = [p.strip() for p in re.split(r"\band\b", s, flags=re.IGNORECASE)]
+    else:
+        parts = [s]
+    tokens = [_normalize_creator_name(p) for p in parts]
+    return [t for t in tokens if t]
+
+
+def _format_apa_author_tokens(tokens: list[str]) -> str:
+    vals = [str(t or "").strip() for t in tokens if str(t or "").strip()]
+    if not vals:
+        return ""
+    if len(vals) == 1:
+        return vals[0]
+    if len(vals) == 2:
+        return f"{vals[0]} & {vals[1]}"
+    return f"{vals[0]} et al."
+
+
+def _is_placeholder_author_token(value: str) -> bool:
+    t = str(value or "").strip().lower()
+    if not t:
+        return True
+    return t in {"unknown", "n/a", "na", "anonymous", "source"} or t.startswith("source ")
+
+
+def _extract_year_token(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        date_parts = value.get("date-parts") or value.get("date_parts")
+        if isinstance(date_parts, list) and date_parts:
+            first = date_parts[0]
+            if isinstance(first, list) and first:
+                y = str(first[0] or "").strip()
+                if re.fullmatch(r"(19|20)\d{2}", y):
+                    return y
+    raw = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    m = re.search(r"\b(19|20)\d{2}\b", str(raw))
+    return m.group(0) if m else ""
+
+
+def _iter_zotero_metadata_dicts(metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    if not isinstance(metadata, dict):
+        return []
+    out: list[dict[str, Any]] = []
+    for key in ("zotero_metadata", "zotero", "zotero_item", "zoteroItem"):
+        val = metadata.get(key)
+        if isinstance(val, dict):
+            out.append(val)
+    return out
+
+
+def _iter_item_metadata_candidates(
+    metadata: dict[str, Any],
+    *,
+    item_key: str = "",
+    item_payload_lookup: dict[str, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    if isinstance(metadata, dict):
+        out.append(metadata)
+    if not item_payload_lookup:
+        return out
+    key = str(item_key or "").strip()
+    lookups = [key]
+    if "#" in key:
+        lookups.append(key.split("#", 1)[0].strip())
+    seen_keys: set[str] = set()
+    seen_meta_ids = {id(m) for m in out}
+    for lookup_key in lookups:
+        norm = lookup_key.lower()
+        if not norm or norm in seen_keys:
+            continue
+        seen_keys.add(norm)
+        payload = item_payload_lookup.get(norm)
+        if not isinstance(payload, dict):
+            continue
+        candidate_md = payload.get("metadata")
+        if isinstance(candidate_md, dict) and id(candidate_md) not in seen_meta_ids:
+            out.append(candidate_md)
+            seen_meta_ids.add(id(candidate_md))
+    return out
+
+
+def _fallback_author_label(title: str, item_key: str) -> str:
+    t = str(title or "").strip()
+    if t:
+        toks = re.findall(r"[A-Za-z][A-Za-z-]+", t)
+        if toks:
+            return toks[0]
+    key = str(item_key or "").strip()
+    if key:
+        return f"Source {key[:8]}"
+    return "Source"
+
+
+def _resolve_item_reference_metadata(
+    metadata: dict[str, Any],
+    *,
+    item_key: str = "",
+    item_payload_lookup: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, str]:
+    candidates = _iter_item_metadata_candidates(
+        metadata if isinstance(metadata, dict) else {},
+        item_key=item_key,
+        item_payload_lookup=item_payload_lookup,
+    )
+
+    title = ""
+    for md in candidates:
+        for key in ("title", "document_title", "paper_title", "name"):
+            v = str(md.get(key) or "").strip()
+            if v:
+                title = v
+                break
+        if title:
+            break
+        for zot in _iter_zotero_metadata_dicts(md):
+            for key in ("title", "shortTitle", "publicationTitle"):
+                v = str(zot.get(key) or "").strip()
+                if v:
+                    title = v
+                    break
+            if title:
+                break
+        if title:
+            break
+
+    year = ""
+    for md in candidates:
+        for key in ("year", "date", "publication_date", "publicationDate", "issued", "publication_year", "published"):
+            year = _extract_year_token(md.get(key))
+            if year:
+                break
+        if year:
+            break
+        for zot in _iter_zotero_metadata_dicts(md):
+            for key in ("year", "date", "issued", "publicationDate", "publication_date"):
+                year = _extract_year_token(zot.get(key))
+                if year:
+                    break
+            if year:
+                break
+        if year:
+            break
+
+    author_tokens: list[str] = []
+    for md in candidates:
+        first_last = str(md.get("first_author_last") or md.get("firstAuthorLast") or "").strip()
+        if first_last and not _is_placeholder_author_token(first_last):
+            author_tokens = [_normalize_creator_name(first_last)]
+            break
+        for key in ("authors", "author_list", "author"):
+            candidate_tokens = [t for t in _author_tokens_from_value(md.get(key)) if not _is_placeholder_author_token(t)]
+            if candidate_tokens:
+                author_tokens = candidate_tokens
+                break
+        if author_tokens:
+            break
+        for zot in _iter_zotero_metadata_dicts(md):
+            candidate_tokens = [
+                t for t in _author_tokens_from_value(zot.get("creators") or zot.get("authors")) if not _is_placeholder_author_token(t)
+            ]
+            if candidate_tokens:
+                author_tokens = candidate_tokens
+                break
+        if author_tokens:
+            break
+
+    author = _format_apa_author_tokens(author_tokens)
+    if not author:
+        author = _fallback_author_label(title, item_key)
+    if not year:
+        year = "1900"
+    if not title:
+        key = str(item_key or "").strip()
+        title = f"Source record {key}" if key else "Source record"
+    return {
+        "author": author,
+        "year": year,
+        "title": title,
+    }
+
+
+def _is_source_itemkey_fallback_citation(citation: str) -> bool:
+    c = str(citation or "").strip()
+    if not c:
+        return False
+    if c == "(Source citation)":
+        return True
+    return bool(
+        re.fullmatch(
+            r"\(\s*Source(?:\s+[A-Za-z0-9_#-]+)?\s*,\s*1900(?:\s*,\s*pp?\.\s*\d+(?:\s*[-–]\s*\d+)?)?\s*\)",
+            c,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def _is_blank_metadata_value(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, tuple, set, dict)):
+        return len(value) == 0
+    return False
+
+
+def _merge_metadata_dicts(primary: dict[str, Any], secondary: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = dict(primary if isinstance(primary, dict) else {})
+    if not isinstance(secondary, dict):
+        return out
+    for key, val in secondary.items():
+        if key == "zotero_metadata" and isinstance(val, dict):
+            base_z = out.get("zotero_metadata") if isinstance(out.get("zotero_metadata"), dict) else {}
+            merged_z = dict(base_z)
+            for zk, zv in val.items():
+                if _is_blank_metadata_value(merged_z.get(zk)) and not _is_blank_metadata_value(zv):
+                    merged_z[zk] = zv
+            out["zotero_metadata"] = merged_z
+            continue
+        if _is_blank_metadata_value(out.get(key)) and not _is_blank_metadata_value(val):
+            out[key] = val
+    return out
+
+
+def _infer_first_author_last(author_summary: str) -> str:
+    text = str(author_summary or "").strip()
+    if not text:
+        return ""
+    parts = re.split(r"\band\b|;|\|", text, flags=re.IGNORECASE)
+    first = str(parts[0] if parts else text).strip()
+    if not first:
+        return ""
+    toks = first.replace(",", " ").split()
+    return toks[-1] if toks else first
+
+
+def _build_metadata_from_all_items_row(row: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    key = str(row.get("key") or row.get("item_key") or row.get("zotero_key") or "").strip()
+    if not key:
+        return "", {}
+    author_summary = str(row.get("author_summary") or "").strip()
+    authors = row.get("authors")
+    author_value: Any = authors if not _is_blank_metadata_value(authors) else author_summary
+    title = str(row.get("title") or "").strip()
+    year = row.get("year")
+    url = str(row.get("url") or "").strip()
+    pdf_path = str(row.get("pdf_path") or "").strip()
+    publication_title = str(row.get("publicationTitle") or row.get("source") or "").strip()
+
+    zotero_md: dict[str, Any] = {}
+    if title:
+        zotero_md["title"] = title
+    if publication_title:
+        zotero_md["publicationTitle"] = publication_title
+    if not _is_blank_metadata_value(year):
+        zotero_md["year"] = year
+    if url:
+        zotero_md["url"] = url
+    if not _is_blank_metadata_value(author_value):
+        zotero_md["authors"] = author_value
+
+    md: dict[str, Any] = {
+        "item_key": key,
+        "title": title,
+        "year": year,
+        "authors": author_value,
+        "first_author_last": _infer_first_author_last(author_summary),
+        "pdf_path": pdf_path,
+        "zotero_metadata": zotero_md,
+    }
+    return key.lower(), md
+
+
+def _all_items_df_candidate_paths(collection_name: str) -> list[Path]:
+    repo = _repo_root()
+    candidates: list[Path] = []
+    seen: set[str] = set()
+
+    env_raw = str(os.getenv("SYSTEMATIC_ALL_ITEMS_DF_PATH", "") or "").strip()
+    if env_raw:
+        for token in env_raw.split(os.pathsep):
+            t = str(token or "").strip()
+            if not t:
+                continue
+            p = Path(t).expanduser()
+            if p.exists() and p.is_file():
+                rp = str(p.resolve())
+                if rp not in seen:
+                    seen.add(rp)
+                    candidates.append(p.resolve())
+
+    base_names = [str(collection_name or "").strip(), _safe_name(str(collection_name or "")), str(collection_name or "").strip().replace(".", "_")]
+    for name in [n for n in base_names if n]:
+        p = repo / "Research" / "Systematic_review" / name / "inputs" / "all_items_df.json"
+        if p.exists() and p.is_file():
+            rp = str(p.resolve())
+            if rp not in seen:
+                seen.add(rp)
+                candidates.append(p.resolve())
+
+    backup_root = repo / "backups" / "systematic_runs"
+    if backup_root.exists() and backup_root.is_dir():
+        pattern = f"{str(collection_name or '').strip()}_*"
+        for run_dir in sorted(backup_root.glob(pattern), key=lambda x: x.stat().st_mtime, reverse=True):
+            for rel in ("run_dir_before/inputs/all_items_df.json", "inputs/all_items_df.json"):
+                p = run_dir / rel
+                if p.exists() and p.is_file():
+                    rp = str(p.resolve())
+                    if rp not in seen:
+                        seen.add(rp)
+                        candidates.append(p.resolve())
+    return candidates
+
+
+def _load_all_items_metadata_lookup(collection_name: str) -> dict[str, dict[str, Any]]:
+    lookup: dict[str, dict[str, Any]] = {}
+    for path_obj in _all_items_df_candidate_paths(collection_name):
+        try:
+            raw = json.loads(path_obj.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(raw, list):
+            continue
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            key, md = _build_metadata_from_all_items_row(row)
+            if not key:
+                continue
+            payload = lookup.get(key, {"metadata": {}})
+            existing_md = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+            payload["metadata"] = _merge_metadata_dicts(existing_md, md)
+            lookup[key] = payload
+    return lookup
+
+
+def _augment_item_payload_lookup_with_all_items(
+    item_payload_lookup: dict[str, dict[str, Any]],
+    *,
+    collection_name: str,
+) -> None:
+    extra = _load_all_items_metadata_lookup(collection_name)
+    if not extra:
+        return
+    for key, payload in extra.items():
+        existing = item_payload_lookup.get(key)
+        if isinstance(existing, dict):
+            base_md = existing.get("metadata") if isinstance(existing.get("metadata"), dict) else {}
+            add_md = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+            existing["metadata"] = _merge_metadata_dicts(base_md, add_md)
+            item_payload_lookup[key] = existing
+        else:
+            item_payload_lookup[key] = payload
+
+
 def _source_url_from_metadata(metadata: dict[str, Any]) -> str:
     if not isinstance(metadata, dict):
         return ""
@@ -275,6 +843,17 @@ def _source_url_from_meta_fields(meta: dict[str, Any]) -> str:
         norm = pdf_path.replace("\\", "/")
         return _sanitize_href_url(f"file://{norm}")
     return ""
+
+
+def _fallback_source_url_for_dqid(dqid: str, meta: dict[str, Any] | None = None) -> str:
+    resolved = _source_url_from_meta_fields(meta or {})
+    if resolved:
+        return resolved
+    token = str(dqid or "").strip().replace(";", "_")
+    if not token:
+        token = "unknown"
+    # Deterministic local URI fallback so strict URL integrity checks never emit '#'.
+    return f"file://dqid/{quote(token, safe='')}"
 
 
 def _split_dqid_values(raw_dqid: str) -> list[str]:
@@ -337,6 +916,381 @@ def _call_models_with_timeout(*, timeout_s: int, kwargs: dict[str, Any]) -> Any:
     if p.exitcode not in (0, None):
         raise RuntimeError(f"Model worker exited with code {p.exitcode}")
     raise RuntimeError("Model worker returned no payload.")
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = str(os.getenv(name, "") or "").strip()
+    if not raw:
+        return bool(default)
+    return raw.lower() in {"1", "true", "yes", "on", "y", "enabled"}
+
+
+def _run_round_synthesis_section(
+    *,
+    payloads: list[dict[str, Any]],
+    output_dir: Path,
+    collection_name: str,
+    research_questions: list[str],
+    temporal_mode: bool,
+    model: str,
+    section_timeout_s: int,
+    citation_style: str = "apa",
+) -> dict[str, Any]:
+    if not payloads:
+        return {"status": "skipped", "reason": "empty_payloads"}
+
+    if not os.getenv("BATCH_ROOT"):
+        os.environ["BATCH_ROOT"] = str((_repo_root() / "tmp").resolve())
+    caps = RoundSynthesisCaps(
+        map_max_rows=_env_int("SYSTEMATIC_EVIDENCE_ROUND_ROWS", 260, min_value=50, max_value=5000),
+        map_max_bytes=_env_int("SYSTEMATIC_EVIDENCE_ROUND_BYTES", 1_500_000, min_value=200_000, max_value=50_000_000),
+        reduce_max_items=_env_int("SYSTEMATIC_ROUND_REDUCE_MAX_ITEMS", 8, min_value=2, max_value=32),
+        reduce_max_bytes=_env_int("SYSTEMATIC_ROUND_REDUCE_MAX_BYTES", 1_000_000, min_value=120_000, max_value=20_000_000),
+        max_reduce_rounds=_env_int("SYSTEMATIC_ROUND_MAX_REDUCE_ROUNDS", 8, min_value=1, max_value=24),
+        quote_chars=_env_int("SYSTEMATIC_SECTION_QUOTE_CHARS", 220, min_value=80, max_value=800),
+    )
+    batch_input_cap = _env_int("SYSTEMATIC_ROUND_BATCH_INPUT_BYTES", 16_000_000, min_value=1_000_000, max_value=150_000_000)
+    batch_req_overhead = _env_int("SYSTEMATIC_ROUND_BATCH_REQ_OVERHEAD", 4500, min_value=512, max_value=50_000)
+    batch_poll_interval = _env_int("SYSTEMATIC_ROUND_BATCH_POLL_SECONDS", 30, min_value=5, max_value=300)
+    qa_retries = _env_int("SYSTEMATIC_ROUND_QA_MAX_RETRIES", 2, min_value=0, max_value=8)
+    missing_retries = _env_int("SYSTEMATIC_ROUND_BATCH_MISSING_RETRIES", 2, min_value=0, max_value=10)
+    strict_round_qa = _env_bool("SYSTEMATIC_ROUND_STRICT_QA", default=True)
+    function_name = "systematic_review_section_writer"
+    transport_logs: list[dict[str, Any]] = []
+
+    call_models_zt = _load_call_models_zt()
+    llms_dir = _repo_root() / "python_backend_legacy" / "llms"
+    if str(llms_dir) not in sys.path:
+        sys.path.insert(0, str(llms_dir))
+    import calling_models as cm  # type: ignore
+
+    safe_function = cm.safe_name(function_name) if hasattr(cm, "safe_name") else _safe_name(function_name)
+    batch_root = cm.get_batch_root() if hasattr(cm, "get_batch_root") else (_repo_root() / "tmp" / "batching_files" / "batches")
+    func_dir = Path(batch_root) / safe_function
+    func_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "round_synthesis_batch_manifest.json"
+
+    def _now_iso() -> str:
+        return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+    def _load_manifest() -> dict[str, Any]:
+        if manifest_path.is_file():
+            try:
+                data = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    shards = data.get("shards")
+                    if not isinstance(shards, dict):
+                        data["shards"] = {}
+                    return data
+            except Exception:
+                pass
+        return {
+            "schema": "round_synthesis_batch_manifest_v1",
+            "collection_name": collection_name,
+            "function": function_name,
+            "model": model,
+            "created_at": _now_iso(),
+            "updated_at": _now_iso(),
+            "shards": {},
+        }
+
+    manifest = _load_manifest()
+
+    def _save_manifest() -> None:
+        manifest["updated_at"] = _now_iso()
+        manifest["collection_name"] = collection_name
+        manifest["function"] = function_name
+        manifest["model"] = model
+        if not isinstance(manifest.get("shards"), dict):
+            manifest["shards"] = {}
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _update_shard(shard_key: str, **fields: Any) -> None:
+        shards = manifest.setdefault("shards", {})
+        if not isinstance(shards, dict):
+            shards = {}
+            manifest["shards"] = shards
+        entry = shards.get(shard_key)
+        if not isinstance(entry, dict):
+            entry = {}
+        entry.update(fields)
+        entry["updated_at"] = _now_iso()
+        shards[shard_key] = entry
+        _save_manifest()
+
+    def _batch_paths_for(safe_collection: str) -> tuple[Path, Path, Path]:
+        input_file = func_dir / f"{safe_collection}_{safe_function}_input.jsonl"
+        output_file = func_dir / f"{safe_collection}_{safe_function}_output.jsonl"
+        meta_file = func_dir / f"{safe_collection}_{safe_function}_batch_metadata.json"
+        return input_file, output_file, meta_file
+
+    def _clear_batch_files(safe_collection: str) -> None:
+        for suffix in ("input.jsonl", "output.jsonl", "batch_metadata.json"):
+            fp = func_dir / f"{safe_collection}_{safe_function}_{suffix}"
+            try:
+                if fp.exists():
+                    fp.unlink()
+            except Exception:
+                pass
+
+    def _read_output_texts(output_file: Path, request_ids: list[str]) -> dict[str, str]:
+        if not output_file.is_file():
+            return {}
+        out: dict[str, str] = {}
+        for rid in request_ids:
+            rid_txt = str(rid or "").strip()
+            if not rid_txt:
+                continue
+            response = cm.read_completion_results(custom_id=rid_txt, path=str(output_file), function=function_name)
+            text = _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
+            if text.strip():
+                out[rid_txt] = text
+        return out
+
+    def _run_model_batch(requests: list[dict[str, Any]], stage_meta: dict[str, Any]) -> list[str]:
+        if not requests:
+            return []
+        stage = str(stage_meta.get("stage") or "map")
+        level = _safe_int(stage_meta.get("level"), 0)
+        request_map: dict[str, dict[str, Any]] = {}
+        for req in requests:
+            rid = str(req.get("request_id") or "").strip()
+            if rid:
+                request_map[rid] = req
+        shards = split_prompt_requests_by_bytes(
+            requests,
+            max_input_bytes=int(batch_input_cap),
+            per_request_overhead_bytes=int(batch_req_overhead),
+        )
+        results_by_id: dict[str, str] = {}
+        for shard_idx, shard in enumerate(shards, start=1):
+            request_ids = [str(req.get("request_id") or "").strip() for req in shard if str(req.get("request_id") or "").strip()]
+            digest = hashlib.sha1(("|".join(request_ids) or f"{stage}:{level}:{shard_idx}").encode("utf-8", errors="ignore")).hexdigest()[:10]
+            shard_key = f"{stage}:l{int(level):02d}:s{int(shard_idx):03d}:{digest}"
+            shard_collection = f"{collection_name}__rs_{stage}_l{level:02d}_s{shard_idx:03d}_{digest}"
+            safe_collection = cm.safe_name(shard_collection) if hasattr(cm, "safe_name") else _safe_name(shard_collection)
+            input_file, output_file, meta_file = _batch_paths_for(safe_collection)
+            attempt_logs: list[dict[str, Any]] = []
+            shard_results = _read_output_texts(output_file, request_ids)
+            missing_ids = [rid for rid in request_ids if rid not in shard_results]
+            _update_shard(
+                shard_key,
+                stage=stage,
+                level=int(level),
+                shard=int(shard_idx),
+                digest=digest,
+                collection=safe_collection,
+                request_ids=request_ids,
+                status=("completed" if not missing_ids else "pending"),
+                total_requests=len(request_ids),
+                read_count=len(shard_results),
+                missing_ids=missing_ids,
+                input_file=str(input_file),
+                output_file=str(output_file),
+                meta_file=str(meta_file),
+            )
+
+            if missing_ids and input_file.is_file() and meta_file.is_file():
+                _update_shard(shard_key, status="resuming")
+                ok_resume = cm._process_batch_for(
+                    analysis_key_suffix=function_name,
+                    section_title=safe_collection,
+                    poll_interval=int(batch_poll_interval),
+                )
+                if ok_resume is not True:
+                    raise RuntimeError(
+                        f"Round synthesis resume batch failed stage={stage} level={level} shard={shard_idx} "
+                        f"collection={safe_collection}"
+                    )
+                shard_results.update(_read_output_texts(output_file, missing_ids))
+                missing_ids = [rid for rid in request_ids if rid not in shard_results]
+                attempt_logs.append(
+                    {
+                        "attempt_type": "resume_existing",
+                        "collection": safe_collection,
+                        "missing_after": len(missing_ids),
+                    }
+                )
+                _update_shard(shard_key, read_count=len(shard_results), missing_ids=missing_ids)
+
+            attempt = 0
+            while missing_ids and attempt <= int(missing_retries):
+                attempt += 1
+                retry_kind = "initial_submit" if attempt == 1 else f"missing_retry_{attempt-1}"
+                retry_req_ids = list(missing_ids)
+                retry_digest = hashlib.sha1(
+                    ("|".join(retry_req_ids) or f"{stage}:{level}:{shard_idx}:retry:{attempt}").encode("utf-8", errors="ignore")
+                ).hexdigest()[:8]
+                if attempt == 1:
+                    retry_collection = shard_collection
+                else:
+                    retry_collection = f"{shard_collection}__mr{attempt-1:02d}_{retry_digest}"
+                retry_safe_collection = cm.safe_name(retry_collection) if hasattr(cm, "safe_name") else _safe_name(retry_collection)
+                retry_input_file, retry_output_file, retry_meta_file = _batch_paths_for(retry_safe_collection)
+                _clear_batch_files(retry_safe_collection)
+
+                for rid in retry_req_ids:
+                    req = request_map.get(rid) or {}
+                    prompt = str(req.get("prompt") or "")
+                    if not prompt.strip():
+                        continue
+                    _ = call_models_zt(
+                        text=prompt,
+                        function=function_name,
+                        custom_id=rid,
+                        collection_name=retry_collection,
+                        model=model,
+                        ai="openai",
+                        read=False,
+                        store_only=True,
+                        cache=False,
+                    )
+                _update_shard(
+                    shard_key,
+                    status="submitted",
+                    active_collection=retry_safe_collection,
+                    active_attempt=int(attempt),
+                    active_input_file=str(retry_input_file),
+                    active_output_file=str(retry_output_file),
+                    active_meta_file=str(retry_meta_file),
+                    missing_ids=missing_ids,
+                )
+                ok = cm._process_batch_for(
+                    analysis_key_suffix=function_name,
+                    section_title=retry_safe_collection,
+                    poll_interval=int(batch_poll_interval),
+                )
+                if ok is not True:
+                    _update_shard(shard_key, status="failed", last_error=f"batch_failed attempt={attempt}")
+                    raise RuntimeError(
+                        f"Round synthesis batch failed stage={stage} level={level} shard={shard_idx} "
+                        f"collection={retry_safe_collection}"
+                    )
+                if not retry_output_file.is_file():
+                    _update_shard(shard_key, status="failed", last_error=f"missing_output attempt={attempt}")
+                    raise RuntimeError(
+                        f"Missing batch output file for stage={stage} shard={shard_idx} attempt={attempt}: {retry_output_file}"
+                    )
+                shard_results.update(_read_output_texts(retry_output_file, retry_req_ids))
+                missing_ids = [rid for rid in request_ids if rid not in shard_results]
+                attempt_logs.append(
+                    {
+                        "attempt_type": retry_kind,
+                        "attempt": int(attempt),
+                        "collection": retry_safe_collection,
+                        "requested": len(retry_req_ids),
+                        "read_after_attempt": len(shard_results),
+                        "missing_after_attempt": len(missing_ids),
+                    }
+                )
+                _update_shard(
+                    shard_key,
+                    status=("completed" if not missing_ids else "retrying"),
+                    read_count=len(shard_results),
+                    missing_ids=missing_ids,
+                    attempts=int(attempt),
+                    attempt_logs=attempt_logs,
+                )
+
+            if missing_ids:
+                sample = ", ".join(missing_ids[:12])
+                _update_shard(
+                    shard_key,
+                    status="failed",
+                    last_error=f"missing_outputs count={len(missing_ids)} sample={sample}",
+                    missing_ids=missing_ids,
+                )
+                raise RuntimeError(
+                    f"Round synthesis shard has missing outputs after retries: stage={stage} level={level} "
+                    f"shard={shard_idx} missing={len(missing_ids)} sample={sample}"
+                )
+
+            for rid in request_ids:
+                text_val = str(shard_results.get(rid) or "")
+                if text_val.strip():
+                    results_by_id[rid] = text_val
+            transport_logs.append(
+                {
+                    "stage": stage,
+                    "level": int(level),
+                    "shard": int(shard_idx),
+                    "collection": safe_collection,
+                    "requests": len(shard),
+                    "request_ids": request_ids,
+                    "read_count": len(shard_results),
+                    "attempts": len(attempt_logs),
+                    "missing_retries": int(max(0, len(attempt_logs) - 1)),
+                    "attempt_logs": attempt_logs,
+                    "output_file": str(output_file),
+                    "manifest_path": str(manifest_path),
+                }
+            )
+            _update_shard(
+                shard_key,
+                status="completed",
+                read_count=len(shard_results),
+                missing_ids=[],
+                attempt_logs=attempt_logs,
+            )
+        return [str(results_by_id.get(str(req.get("request_id") or "").strip()) or "") for req in requests]
+
+    def _run_model(prompt: str, meta: dict[str, Any]) -> str:
+        stage = str(meta.get("stage") or "map")
+        rid = _safe_int(meta.get("round"), 0) or _safe_int(meta.get("level"), 0)
+        chunk = _safe_int(meta.get("chunk"), 0)
+        custom_id = str(meta.get("request_id") or "").strip() or _stable_section_custom_id(
+            collection_name,
+            f"round_synth_retry_{stage}_{rid}_{chunk}",
+            prompt,
+        )
+        kwargs = {
+            "text": prompt,
+            "function": function_name,
+            "custom_id": custom_id,
+            "collection_name": f"{collection_name}__round_retry_{stage}",
+            "model": model,
+            "ai": "openai",
+            "read": False,
+            "store_only": True,
+            "cache": False,
+        }
+        response = _call_models_single_batch_section(kwargs=kwargs)
+        text = _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
+        return text
+
+    ctx = {
+        "analysis_mode": "temporal" if temporal_mode else "theme",
+        "objective": "Synthesize all coded evidence so the section answers the research question set directly.",
+        "research_questions": list(research_questions),
+        "citation_style": _normalize_citation_style(citation_style),
+        "require_dqid_anchors": True,
+    }
+    result = run_round_synthesis(
+        payloads=payloads,
+        run_model=_run_model,
+        run_model_batch=_run_model_batch,
+        caps=caps,
+        context=ctx,
+        max_retries_per_request=int(qa_retries),
+        strict_qa=bool(strict_round_qa),
+    )
+    if isinstance(result, dict):
+        result["batch_transport"] = {
+            "input_cap_bytes": int(batch_input_cap),
+            "request_overhead_bytes": int(batch_req_overhead),
+            "poll_interval_seconds": int(batch_poll_interval),
+            "missing_retries": int(missing_retries),
+            "strict_round_qa": bool(strict_round_qa),
+            "manifest_path": str(manifest_path),
+            "logs": transport_logs,
+        }
+    out_path = output_dir / "round_synthesis_result.json"
+    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {
+        "status": "ok",
+        "path": str(out_path),
+        "result": result,
+    }
 
 
 def _call_models_single_batch_section(*, kwargs: dict[str, Any]) -> Any:
@@ -492,12 +1446,169 @@ def _compute_theme_counts(summary: dict[str, Any]) -> dict[str, int]:
     return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True))
 
 
+def _extract_research_questions(summary: dict[str, Any]) -> list[str]:
+    input_block = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
+    raw = input_block.get("research_questions")
+    if not isinstance(raw, list):
+        raw = input_block.get("researchQuestions")
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for q in raw:
+        s = str(q or "").strip()
+        if not s:
+            continue
+        key = s.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+    return out
+
+
+def _extract_temporal_flag(summary: dict[str, Any]) -> bool:
+    input_block = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
+    raw = input_block.get("temporal")
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        try:
+            return bool(int(raw))
+        except Exception:
+            return False
+    if isinstance(raw, str):
+        return raw.strip().lower() in {"1", "true", "yes", "on", "temporal", "chronological"}
+    mode = str(input_block.get("review_mode") or input_block.get("mode") or "").strip().lower()
+    return mode in {"temporal", "chronological"}
+
+
+def _parse_year_int(value: Any) -> int | None:
+    s = str(value or "").strip()
+    if not s:
+        return None
+    m = re.search(r"(19|20)\d{2}", s)
+    if not m:
+        return None
+    try:
+        return int(m.group(0))
+    except Exception:
+        return None
+
+
+def _extract_relevant_rq_indices(value: Any) -> list[int]:
+    if not isinstance(value, list):
+        return []
+    out: list[int] = []
+    seen: set[int] = set()
+    for raw in value:
+        candidate: Any = raw
+        if isinstance(raw, dict):
+            candidate = raw.get("index")
+        n: int | None = None
+        if isinstance(candidate, int):
+            n = int(candidate)
+        elif isinstance(candidate, str):
+            s = candidate.strip()
+            if re.fullmatch(r"-?\d+", s):
+                try:
+                    n = int(s)
+                except Exception:
+                    n = None
+        if n is None or n in seen:
+            continue
+        seen.add(n)
+        out.append(n)
+    return out
+
+
+def _detect_rq_index_mode(rows: list[dict[str, Any]], question_count: int) -> str:
+    if question_count <= 0:
+        return "none"
+    observed: set[int] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        direct = _extract_relevant_rq_indices(row.get("rq_indices"))
+        legacy = _extract_relevant_rq_indices(row.get("relevant_rqs"))
+        for idx in direct + legacy:
+            observed.add(int(idx))
+    if not observed:
+        return "none"
+    if 0 in observed:
+        return "zero_based"
+    if all(1 <= i <= question_count for i in observed):
+        return "one_based"
+    return "zero_based"
+
+
+def _normalize_explicit_rq_indices(indices: list[int], question_count: int, mode: str) -> list[int]:
+    out: list[int] = []
+    seen: set[int] = set()
+    if question_count <= 0:
+        return out
+    for raw in indices:
+        idx: int | None = None
+        if mode == "one_based":
+            cand = int(raw)
+            if 1 <= cand <= question_count:
+                idx = cand - 1
+        elif mode == "zero_based":
+            cand = int(raw)
+            if 0 <= cand < question_count:
+                idx = cand
+        else:
+            # Unknown mode: accept canonical 0-based values only.
+            cand = int(raw)
+            if 0 <= cand < question_count:
+                idx = cand
+        if idx is None or idx in seen:
+            continue
+        seen.add(idx)
+        out.append(idx)
+    return out
+
+
+def _rq_sort_key(value: str) -> int:
+    m = re.search(r"(\d+)", str(value or ""))
+    if not m:
+        return 10_000
+    try:
+        return int(m.group(1))
+    except Exception:
+        return 10_000
+
+
 def _rq_findings_lines(summary: dict[str, Any]) -> list[str]:
+    research_questions = _extract_research_questions(summary)
+    if research_questions:
+        full_rows_cap = _env_optional_limit("SYSTEMATIC_FULL_EVIDENCE_ROWS", default=0, max_value=2_000_000)
+        rows, _ = _build_dqid_evidence_payload(summary, max_rows=full_rows_cap)
+        assignments, unmapped_rows = _assign_rows_to_questions(rows, research_questions)
+        lines: list[str] = []
+        for i, question in enumerate(research_questions, start=1):
+            assigned = list(assignments.get(i - 1, []))
+            if not assigned:
+                lines.append(f"RQ{i} - {question}: no mapped evidence snippets")
+                continue
+            counts: dict[str, int] = {}
+            for row in assigned:
+                theme = str(row.get("theme") or "uncategorized").strip() or "uncategorized"
+                counts[theme] = counts.get(theme, 0) + 1
+            top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+            lines.append(
+                f"RQ{i} - {question}: "
+                + ", ".join(f"{_humanize_theme_tokens(theme)} ({count})" for theme, count in top)
+            )
+        if unmapped_rows:
+            lines.append(f"Unmapped evidence snippets (excluded from RQ clustering): {len(unmapped_rows)}")
+        return lines
+
     output = summary.get("output", {}) if isinstance(summary.get("output"), dict) else {}
     themes_export = output.get("themes_export", {}) if isinstance(output.get("themes_export"), dict) else {}
     per_rq = themes_export.get("per_rq", {}) if isinstance(themes_export.get("per_rq"), dict) else {}
     lines: list[str] = []
-    for rq_key, rq_data in sorted(per_rq.items()):
+    for rq_key, rq_data in sorted(per_rq.items(), key=lambda kv: _rq_sort_key(str(kv[0]))):
         if not isinstance(rq_data, dict):
             continue
         inventory = rq_data.get("inventory_index", {})
@@ -513,8 +1624,693 @@ def _rq_findings_lines(summary: dict[str, Any]) -> list[str]:
             reverse=True,
         )[:5]
         if top:
-            lines.append(f"{rq_key}: " + ", ".join(f"{theme} ({count})" for theme, count in top))
+            idx = _rq_sort_key(rq_key)
+            rq_label = str(rq_data.get("question") or "").strip()
+            if not rq_label and 0 <= idx < len(research_questions):
+                rq_label = research_questions[idx]
+            prefix = rq_label or str(rq_key)
+            lines.append(f"{prefix}: " + ", ".join(f"{theme} ({count})" for theme, count in top))
     return lines
+
+
+_RQ_STOPWORDS = {
+    "what",
+    "which",
+    "when",
+    "where",
+    "how",
+    "why",
+    "does",
+    "do",
+    "for",
+    "from",
+    "with",
+    "without",
+    "into",
+    "onto",
+    "over",
+    "under",
+    "about",
+    "across",
+    "between",
+    "through",
+    "their",
+    "there",
+    "those",
+    "these",
+    "this",
+    "that",
+    "them",
+    "they",
+    "state",
+    "states",
+    "cyber",
+    "attribution",
+    "create",
+    "follow",
+    "often",
+    "most",
+    "openly",
+    "interesting",
+    "aspects",
+    "theme",
+    "overarching",
+    "especially",
+    "limit",
+    "limits",
+    "problems",
+    "problem",
+    "questions",
+    "question",
+}
+
+
+def _question_keyword_set(question: str) -> set[str]:
+    q = str(question or "").lower()
+    tokens = {t for t in re.findall(r"[a-z][a-z0-9_-]{2,}", q) if t not in _RQ_STOPWORDS}
+    if re.search(r"\blegal\b|\bpolicy\b|\bescalation\b|\bdeterrence\b", q):
+        tokens.update({"legal", "policy", "escalation", "deterrence", "threshold", "mis", "signal", "responsibility"})
+    if re.search(r"\bbenefit\b|\bpublic\b|\bformal\b|\bnorm", q):
+        tokens.update({"benefit", "public", "formal", "norm", "ally", "coordination", "lawful", "measure"})
+    if re.search(r"\bfalse\b|\bflag\b|\bshared\b|\bproxy\b|\bobfuscation\b|\banonym", q):
+        tokens.update({"false", "flag", "shared", "proxy", "obfuscation", "anonymity", "tooling", "ttp"})
+    if re.search(r"\bsolution\b|\bmultilateral\b|\bevidentiary\b|\bfloor\b", q):
+        tokens.update({"solution", "multilateral", "mechanism", "evidentiary", "floor", "cbm", "investigation"})
+    if re.search(r"\bsource\b|\bmethods\b|\bchain\b|\bcustody\b|\bverification\b|\bdisclosure\b", q):
+        tokens.update({"source", "method", "chain", "custody", "verification", "disclosure", "proof", "sharing"})
+    return {t for t in tokens if len(t) >= 3}
+
+
+def _row_assignment_text(row: dict[str, Any]) -> str:
+    parts = [
+        str(row.get("theme") or ""),
+        str(row.get("citation") or ""),
+        str(row.get("quote") or ""),
+        str(row.get("item_key") or ""),
+    ]
+    return " ".join(parts).lower()
+
+
+def _assign_rows_to_questions(
+    rows: list[dict[str, Any]],
+    research_questions: list[str],
+) -> tuple[dict[int, list[dict[str, Any]]], list[dict[str, Any]]]:
+    buckets: dict[int, list[dict[str, Any]]] = {i: [] for i in range(len(research_questions))}
+    unmapped: list[dict[str, Any]] = []
+    if not rows or not research_questions:
+        return buckets, unmapped
+    keyword_sets = [_question_keyword_set(q) for q in research_questions]
+    index_mode = _detect_rq_index_mode(rows, len(research_questions))
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        explicit_indices = _normalize_explicit_rq_indices(
+            _extract_relevant_rq_indices(row.get("rq_indices")) or _extract_relevant_rq_indices(row.get("relevant_rqs")),
+            len(research_questions),
+            index_mode,
+        )
+        if explicit_indices:
+            for idx in explicit_indices:
+                buckets[idx].append(row)
+            continue
+
+        text = _row_assignment_text(row)
+        theme = str(row.get("theme") or "").lower()
+        text_tokens = set(re.findall(r"[a-z][a-z0-9_-]{1,}", text))
+        theme_tokens = set(re.findall(r"[a-z][a-z0-9_-]{1,}", theme))
+        best_idx = -1
+        best_score = 0
+        for idx, kws in enumerate(keyword_sets):
+            score = 0
+            for kw in kws:
+                if not kw:
+                    continue
+                if kw in theme_tokens:
+                    score += 3
+                elif kw in text_tokens:
+                    score += 1
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        if best_idx >= 0 and best_score > 0:
+            buckets[best_idx].append(row)
+        else:
+            unmapped.append(row)
+
+    # Theme-driven enrichment fallback:
+    # When explicit/inferred row-level mapping is absent, seed empty RQs from dominant themes.
+    if unmapped and any(len(v) == 0 for v in buckets.values()):
+        enrich_rows = _env_int("SYSTEMATIC_RQ_THEME_ENRICH_ROWS", 25, min_value=1, max_value=250)
+        theme_to_rows: dict[str, list[dict[str, Any]]] = {}
+        for row in unmapped:
+            theme_key = str(row.get("theme") or "uncategorized").strip().lower() or "uncategorized"
+            theme_to_rows.setdefault(theme_key, []).append(row)
+
+        def _sig(r: dict[str, Any]) -> str:
+            return (
+                f"{str(r.get('dqid') or '').strip()}|"
+                f"{str(r.get('item_key') or '').strip()}|"
+                f"{str(r.get('quote') or '').strip()[:160]}|"
+                f"{str(r.get('theme') or '').strip()}"
+            )
+
+        used: set[str] = set()
+        for idx in range(len(research_questions)):
+            if buckets.get(idx):
+                continue
+            best_theme = ""
+            best_score = -1
+            best_freq = -1
+            kws = keyword_sets[idx] if idx < len(keyword_sets) else set()
+            for theme_name, theme_rows in theme_to_rows.items():
+                available = [r for r in theme_rows if _sig(r) not in used]
+                if not available:
+                    continue
+                tokens = set(re.findall(r"[a-z][a-z0-9_-]{1,}", str(theme_name)))
+                score = len(tokens & kws) if kws else 0
+                freq = len(available)
+                if score > best_score or (score == best_score and freq > best_freq):
+                    best_score = score
+                    best_freq = freq
+                    best_theme = theme_name
+            if not best_theme:
+                continue
+            picked = 0
+            for row in theme_to_rows.get(best_theme, []):
+                rsig = _sig(row)
+                if rsig in used:
+                    continue
+                row.setdefault("_rq_assignment_source", "theme_enrichment")
+                row.setdefault("_rq_assignment_theme", best_theme)
+                buckets[idx].append(row)
+                used.add(rsig)
+                picked += 1
+                if picked >= int(enrich_rows):
+                    break
+
+        if used:
+            unmapped = [row for row in unmapped if _sig(row) not in used]
+    return buckets, unmapped
+
+
+def _row_signature(row: dict[str, Any]) -> str:
+    return (
+        f"{str(row.get('dqid') or '').strip()}|"
+        f"{str(row.get('item_key') or '').strip()}|"
+        f"{str(row.get('quote') or '')[:140]}"
+    )
+
+
+def _row_theme(row: dict[str, Any]) -> str:
+    return str(row.get("theme") or "uncategorized").strip() or "uncategorized"
+
+
+def _rows_by_theme(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        buckets[_row_theme(row)].append(row)
+    return dict(buckets)
+
+
+def _top_theme_groups(rows: list[dict[str, Any]], top_n: int) -> list[tuple[str, list[dict[str, Any]]]]:
+    grouped = _rows_by_theme(rows)
+    ranked = sorted(grouped.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    if top_n > 0:
+        return ranked[:top_n]
+    return ranked
+
+
+def _top_theme_text(rows: list[dict[str, Any]], limit: int = 4) -> str:
+    groups = _top_theme_groups(rows, max(1, int(limit)))
+    if not groups:
+        return "insufficient thematic coverage"
+    return ", ".join(f"{_humanize_theme_tokens(theme)} ({len(theme_rows)})" for theme, theme_rows in groups)
+
+
+def _source_count(rows: list[dict[str, Any]]) -> int:
+    return len({str(r.get("item_key") or "").strip() for r in rows if str(r.get("item_key") or "").strip()})
+
+
+def _env_optional_limit(name: str, default: int = 0, *, max_value: int = 500_000) -> int:
+    raw = str(os.getenv(name, "") or "").strip()
+    if not raw:
+        return int(default)
+    try:
+        n = int(raw)
+    except Exception:
+        return int(default)
+    if n <= 0:
+        return 0
+    return min(int(max_value), n)
+
+
+def _citation_anchors_for_rows(
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    *,
+    limit: int,
+) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        dqid = str(row.get("dqid") or "").strip()
+        if not dqid or dqid in seen:
+            continue
+        seen.add(dqid)
+        _, meta = _resolve_dqid_meta(dqid, dqid_lookup)
+        citation = str((meta or {}).get("citation") or "").strip()
+        if not citation or _is_source_itemkey_fallback_citation(citation):
+            continue
+        out.append(f"<a data-dqid=\"{html.escape(dqid, quote=True)}\">{html.escape(citation)}</a>")
+        if len(out) >= max(1, int(limit)):
+            break
+    return out
+
+
+def _wave_periods_fallback(years: list[int]) -> list[dict[str, Any]]:
+    ys = sorted({y for y in years if isinstance(y, int)})
+    if not ys:
+        return []
+    mn, mx = ys[0], ys[-1]
+    if len(ys) <= 4:
+        return [{"label": str(y), "start_year": y, "end_year": y, "debate_cluster": ""} for y in ys]
+    span = max(1, mx - mn + 1)
+    width = max(1, span // 3)
+    bounds = [
+        (mn, min(mx, mn + width - 1)),
+        (min(mx, mn + width), min(mx, mn + (2 * width) - 1)),
+        (min(mx, mn + (2 * width)), mx),
+    ]
+    labels = ["Period I", "Period II", "Period III"]
+    out: list[dict[str, Any]] = []
+    for i, (a, b) in enumerate(bounds):
+        out.append({"label": f"{labels[i]} ({a}-{b})", "start_year": a, "end_year": b, "debate_cluster": ""})
+    return out
+
+
+def _derive_temporal_waves_from_rows(
+    *,
+    rows: list[dict[str, Any]],
+    collection_name: str,
+    model: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    years = [int(r["year"]) for r in rows if isinstance(r.get("year"), int)]
+    if not years:
+        return [], {"selected_source": "fallback_empty_years"}
+    year_counter = Counter(years)
+    theme_counts = Counter(_row_theme(r) for r in rows if isinstance(r, dict))
+    by_year_theme: dict[int, Counter[str]] = defaultdict(Counter)
+    for row in rows:
+        year = row.get("year")
+        if not isinstance(year, int):
+            continue
+        by_year_theme[int(year)][_row_theme(row)] += 1
+    by_year_theme_hints = {y: c.most_common(6) for y, c in by_year_theme.items()}
+
+    waves: list[dict[str, Any]] = []
+    diag: dict[str, Any] = {"selected_source": "fallback_derive_periods"}
+    try:
+        # Reuse chronology pipeline LLM wave splitter for consistent temporal segmentation.
+        from Research.chronological_review_pipeline import _ai_define_waves as _chrono_ai_define_waves  # type: ignore
+        from Research.chronological_review_pipeline import _waves_to_periods as _chrono_waves_to_periods  # type: ignore
+    except Exception as exc:
+        diag = {"selected_source": "fallback_import_error", "error": str(exc)}
+    else:
+        try:
+            ai_waves, ai_diag = _chrono_ai_define_waves(
+                collection_name=collection_name,
+                years=years,
+                year_counter=year_counter,
+                theme_counts=dict(theme_counts),
+                by_year_theme_hints=by_year_theme_hints,
+                model=model,
+            )
+            diag = dict(ai_diag or {})
+            periods = _chrono_waves_to_periods(ai_waves) if ai_waves else []
+            for idx, (label, (start_year, end_year)) in enumerate(periods, start=1):
+                cluster = ""
+                for w in ai_waves:
+                    if str(w.get("label") or "").strip() == str(label).strip():
+                        cluster = str(w.get("debate_cluster") or "").strip()
+                        break
+                waves.append(
+                    {
+                        "index": idx,
+                        "label": str(label).strip(),
+                        "start_year": int(start_year),
+                        "end_year": int(end_year),
+                        "debate_cluster": cluster,
+                    }
+                )
+        except Exception as exc:
+            diag = {"selected_source": "fallback_wave_split_error", "error": str(exc)}
+            waves = []
+
+    if not waves:
+        fallback = _wave_periods_fallback(years)
+        waves = [
+            {
+                "index": i,
+                "label": str(w.get("label") or f"Wave {i}"),
+                "start_year": int(w.get("start_year")),
+                "end_year": int(w.get("end_year")),
+                "debate_cluster": str(w.get("debate_cluster") or ""),
+            }
+            for i, w in enumerate(fallback, start=1)
+        ]
+    return waves, diag
+
+
+def _assign_rows_to_waves(
+    rows: list[dict[str, Any]],
+    waves: list[dict[str, Any]],
+) -> tuple[dict[int, list[dict[str, Any]]], list[dict[str, Any]]]:
+    buckets: dict[int, list[dict[str, Any]]] = {i: [] for i in range(len(waves))}
+    undated: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        year = row.get("year")
+        if not isinstance(year, int):
+            undated.append(row)
+            continue
+        matched = False
+        for idx, wave in enumerate(waves):
+            start_year = int(wave.get("start_year"))
+            end_year = int(wave.get("end_year"))
+            if start_year <= int(year) <= end_year:
+                buckets[idx].append(row)
+                matched = True
+                break
+        if not matched:
+            if waves:
+                buckets[len(waves) - 1].append(row)
+            else:
+                undated.append(row)
+    return buckets, undated
+
+
+def _render_theme_subsections(
+    *,
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    top_themes: int,
+    citations_per_theme: int,
+    heading_level: int,
+    context_label: str,
+) -> str:
+    level = max(4, min(6, int(heading_level)))
+    chunks: list[str] = []
+    groups = _top_theme_groups(rows, top_themes)
+    for theme, theme_rows in groups:
+        sources = _source_count(theme_rows)
+        citations = _citation_anchors_for_rows(theme_rows, dqid_lookup, limit=citations_per_theme)
+        cite_html = "; ".join(citations) if citations else "No mapped citations available for this theme."
+        chunks.append(f"<h{level}>Theme: {html.escape(_humanize_theme_tokens(theme))}</h{level}>")
+        chunks.append(
+            "<p>"
+            + (
+                f"For {context_label}, this theme appears in {len(theme_rows)} coded snippets across {sources} source records. "
+                "Synthesis should prioritize this evidence cluster when addressing the analytic objective."
+            )
+            + "</p>"
+        )
+        chunks.append(f"<p><strong>Illustrative citations:</strong> {cite_html}</p>")
+    return "".join(chunks)
+
+
+def _build_explicit_rq_narrative_html(
+    *,
+    research_questions: list[str],
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    citation_style: str = "apa",
+) -> str:
+    if not research_questions:
+        return ""
+    assignments, unmapped_rows = _assign_rows_to_questions(rows, research_questions)
+    top_themes_per_rq = _env_int("SYSTEMATIC_RQ_TOP_THEMES", 5, min_value=3, max_value=12)
+    citations_per_theme = _env_int("SYSTEMATIC_RQ_CITES_PER_THEME", 3, min_value=1, max_value=10)
+    row_limit = _env_optional_limit("SYSTEMATIC_RQ_ROWS_PER_QUESTION", default=0, max_value=500_000)
+
+    mapped_signatures: set[str] = set()
+    for assigned_rows in assignments.values():
+        for row in assigned_rows:
+            mapped_signatures.add(_row_signature(row))
+    total_rows = len(rows)
+    mapped_rows = len(mapped_signatures)
+
+    table_rows: list[str] = []
+    rq_blocks: list[str] = []
+    for i, question in enumerate(research_questions, start=1):
+        assigned = list(assignments.get(i - 1, []))
+        if row_limit > 0:
+            assigned = assigned[:row_limit]
+        top_theme_txt = _top_theme_text(assigned, limit=4)
+        table_rows.append(
+            "<tr>"
+            f"<td>RQ{i}</td>"
+            f"<td>{html.escape(question)}</td>"
+            f"<td>{len(assigned)}</td>"
+            f"<td>{_source_count(assigned)}</td>"
+            f"<td>{html.escape(top_theme_txt)}</td>"
+            "</tr>"
+        )
+        rq_blocks.append(f"<h4>RQ{i}: {html.escape(question)}</h4>")
+        if not assigned:
+            rq_blocks.append(
+                "<p>No evidence snippets were confidently mapped to this question under current coding tags and lexical matching. "
+                "This question remains a synthesis gap for this run.</p>"
+            )
+            continue
+        rq_blocks.append(
+            "<p>"
+            + (
+                f"Evidence assigned to this question includes {len(assigned)} coded snippets across {_source_count(assigned)} source records. "
+                f"Dominant themes were {top_theme_txt}. "
+                "The synthesis below structures findings by top themes to directly answer this research question."
+            )
+            + "</p>"
+        )
+        rq_blocks.append(
+            _render_theme_subsections(
+                rows=assigned,
+                dqid_lookup=dqid_lookup,
+                top_themes=top_themes_per_rq,
+                citations_per_theme=citations_per_theme,
+                heading_level=5,
+                context_label=f"RQ{i}",
+            )
+        )
+
+    summary_table = (
+        "<table class='data-table'><thead><tr>"
+        "<th>Question</th><th>Research Question Text</th><th>Assigned Evidence Snippets</th><th>Unique Sources</th><th>Top Themes</th>"
+        "</tr></thead><tbody>"
+        + "".join(table_rows)
+        + "</tbody></table>"
+    )
+    coverage = (
+        "<p><strong>RQ coverage:</strong> "
+        + f"{mapped_rows} of {total_rows} evidence snippets were mapped to at least one research question; "
+        + f"{len(unmapped_rows)} were unmapped and excluded from per-question tallies."
+        + "</p>"
+    )
+    out = "<h4>Narrative synthesis</h4>" + coverage + summary_table + "".join(rq_blocks)
+    out = _clean_and_humanize_section_html(out)
+    out = _enrich_dqid_anchors(out, dqid_lookup, citation_style=citation_style)
+    out = _inject_dqid_anchors_if_missing(out, dqid_lookup, max_anchors=max(6, citations_per_theme), citation_style=citation_style)
+    return out
+
+
+def _build_theme_only_narrative_html(
+    *,
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    citation_style: str = "apa",
+) -> str:
+    top_themes = _env_int("SYSTEMATIC_THEME_TOP_N", 5, min_value=3, max_value=8)
+    citations_per_theme = _env_int("SYSTEMATIC_THEME_CITES_PER_THEME", 3, min_value=1, max_value=10)
+    out = "<h4>Narrative synthesis</h4>"
+    out += (
+        "<p>"
+        + f"No explicit research-question list was provided. "
+        + f"Synthesis is therefore structured by the top {top_themes} themes in the coded evidence."
+        + "</p>"
+    )
+    out += _render_theme_subsections(
+        rows=rows,
+        dqid_lookup=dqid_lookup,
+        top_themes=top_themes,
+        citations_per_theme=citations_per_theme,
+        heading_level=4,
+        context_label="the overarching review objective",
+    )
+    out = _clean_and_humanize_section_html(out)
+    out = _enrich_dqid_anchors(out, dqid_lookup, citation_style=citation_style)
+    out = _inject_dqid_anchors_if_missing(out, dqid_lookup, max_anchors=max(6, citations_per_theme), citation_style=citation_style)
+    return out
+
+
+def _build_temporal_narrative_html(
+    *,
+    collection_name: str,
+    model: str,
+    research_questions: list[str],
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    citation_style: str = "apa",
+) -> str:
+    waves, wave_diag = _derive_temporal_waves_from_rows(rows=rows, collection_name=collection_name, model=model)
+    if not waves:
+        # Temporal requested but no dated evidence; fall back to non-temporal structure.
+        if research_questions:
+            return _build_explicit_rq_narrative_html(
+                research_questions=research_questions,
+                rows=rows,
+                dqid_lookup=dqid_lookup,
+                citation_style=citation_style,
+            )
+        return _build_theme_only_narrative_html(rows=rows, dqid_lookup=dqid_lookup, citation_style=citation_style)
+
+    by_wave, undated_rows = _assign_rows_to_waves(rows, waves)
+    top_themes = _env_int("SYSTEMATIC_THEME_TOP_N", 5, min_value=3, max_value=8)
+    top_themes_per_rq = _env_int("SYSTEMATIC_RQ_TOP_THEMES", 5, min_value=3, max_value=12)
+    citations_per_theme = _env_int("SYSTEMATIC_THEME_CITES_PER_THEME", 3, min_value=1, max_value=10)
+    row_limit = _env_optional_limit("SYSTEMATIC_RQ_ROWS_PER_QUESTION", default=0, max_value=500_000)
+
+    parts: list[str] = ["<h4>Narrative synthesis</h4>"]
+    parts.append(
+        "<p><strong>Temporal mode enabled:</strong> Results are structured by chronological waves, and within each wave by "
+        + ("research question plus top themes." if research_questions else "top themes.")
+        + "</p>"
+    )
+    parts.append(f"<p><strong>Wave split source:</strong> {html.escape(str(wave_diag.get('selected_source') or 'unknown'))}</p>")
+
+    for idx, wave in enumerate(waves, start=1):
+        label = str(wave.get("label") or f"Wave {idx}").strip()
+        start_year = int(wave.get("start_year"))
+        end_year = int(wave.get("end_year"))
+        debate_cluster = str(wave.get("debate_cluster") or "").strip()
+        wave_rows = list(by_wave.get(idx - 1, []))
+        parts.append(f"<h4>Wave {idx}: {html.escape(label)} ({start_year}-{end_year})</h4>")
+        if debate_cluster:
+            parts.append(f"<p><strong>Wave focus:</strong> {html.escape(debate_cluster)}</p>")
+        parts.append(
+            f"<p>Wave evidence: {len(wave_rows)} coded snippets across {_source_count(wave_rows)} source records.</p>"
+        )
+        if research_questions:
+            wave_assignments, wave_unmapped = _assign_rows_to_questions(wave_rows, research_questions)
+            parts.append(
+                f"<p><strong>Wave RQ coverage:</strong> {len(wave_rows) - len(wave_unmapped)} mapped; {len(wave_unmapped)} unmapped.</p>"
+            )
+            for rq_idx, question in enumerate(research_questions, start=1):
+                rq_rows = list(wave_assignments.get(rq_idx - 1, []))
+                if row_limit > 0:
+                    rq_rows = rq_rows[:row_limit]
+                parts.append(f"<h5>RQ{rq_idx}: {html.escape(question)}</h5>")
+                if not rq_rows:
+                    parts.append("<p>No mapped evidence snippets for this question in this wave.</p>")
+                    continue
+                parts.append(
+                    "<p>"
+                    + (
+                        f"In this wave, RQ{rq_idx} is supported by {len(rq_rows)} snippets across {_source_count(rq_rows)} sources. "
+                        f"Dominant themes: {_top_theme_text(rq_rows, limit=4)}."
+                    )
+                    + "</p>"
+                )
+                parts.append(
+                    _render_theme_subsections(
+                        rows=rq_rows,
+                        dqid_lookup=dqid_lookup,
+                        top_themes=top_themes_per_rq,
+                        citations_per_theme=citations_per_theme,
+                        heading_level=6,
+                        context_label=f"Wave {idx}, RQ{rq_idx}",
+                    )
+                )
+        else:
+            parts.append(
+                _render_theme_subsections(
+                    rows=wave_rows,
+                    dqid_lookup=dqid_lookup,
+                    top_themes=top_themes,
+                    citations_per_theme=citations_per_theme,
+                    heading_level=5,
+                    context_label=f"Wave {idx}",
+                )
+            )
+
+    if undated_rows:
+        parts.append("<h4>Undated evidence</h4>")
+        if research_questions:
+            u_assign, _u_unmapped = _assign_rows_to_questions(undated_rows, research_questions)
+            for rq_idx, question in enumerate(research_questions, start=1):
+                rq_rows = list(u_assign.get(rq_idx - 1, []))
+                parts.append(f"<h5>RQ{rq_idx}: {html.escape(question)}</h5>")
+                if not rq_rows:
+                    parts.append("<p>No mapped undated evidence for this question.</p>")
+                    continue
+                parts.append(
+                    _render_theme_subsections(
+                        rows=rq_rows,
+                        dqid_lookup=dqid_lookup,
+                        top_themes=top_themes_per_rq,
+                        citations_per_theme=citations_per_theme,
+                        heading_level=6,
+                        context_label=f"undated RQ{rq_idx}",
+                    )
+                )
+        else:
+            parts.append(
+                _render_theme_subsections(
+                    rows=undated_rows,
+                    dqid_lookup=dqid_lookup,
+                    top_themes=top_themes,
+                    citations_per_theme=citations_per_theme,
+                    heading_level=5,
+                    context_label="undated evidence",
+                )
+            )
+
+    out = "".join(parts)
+    out = _clean_and_humanize_section_html(out)
+    out = _enrich_dqid_anchors(out, dqid_lookup, citation_style=citation_style)
+    out = _inject_dqid_anchors_if_missing(out, dqid_lookup, max_anchors=max(6, citations_per_theme), citation_style=citation_style)
+    return out
+
+
+def _build_results_narrative_html(
+    *,
+    collection_name: str,
+    model: str,
+    research_questions: list[str],
+    rows: list[dict[str, Any]],
+    dqid_lookup: dict[str, dict[str, str]],
+    citation_style: str,
+    temporal: bool,
+) -> str:
+    if temporal:
+        return _build_temporal_narrative_html(
+            collection_name=collection_name,
+            model=model,
+            research_questions=research_questions,
+            rows=rows,
+            dqid_lookup=dqid_lookup,
+            citation_style=citation_style,
+        )
+    if research_questions:
+        return _build_explicit_rq_narrative_html(
+            research_questions=research_questions,
+            rows=rows,
+            dqid_lookup=dqid_lookup,
+            citation_style=citation_style,
+        )
+    return _build_theme_only_narrative_html(rows=rows, dqid_lookup=dqid_lookup, citation_style=citation_style)
 
 
 def _svg_bar_chart(title: str, labels: list[str], values: list[int], width: int = 980, height: int = 520) -> str:
@@ -743,8 +2539,12 @@ def _normalize_parenthetical_citations_html(section_html: str) -> str:
 def _clean_and_humanize_section_html(section_html: str) -> str:
     out = _clean_llm_html(_extract_llm_text(section_html))
     out = _humanize_theme_tokens(out)
+    # Repair malformed heading/paragraph nesting occasionally produced by model output.
+    out = re.sub(r"<p>\s*(<h[1-6]\b[^>]*>)", r"\1", out, flags=re.IGNORECASE)
+    out = re.sub(r"(</h[1-6]>)\s*</p>", r"\1", out, flags=re.IGNORECASE)
     out = re.sub(r"<p>\s*<p>", "<p>", out, flags=re.IGNORECASE)
     out = re.sub(r"</p>\s*</p>", "</p>", out, flags=re.IGNORECASE)
+    out = re.sub(r"(?:<br\s*/?>\s*)+(?=<h[1-6]\b)", "", out, flags=re.IGNORECASE)
     out = re.sub(r"(?:<br\s*/?>\s*){3,}", "<br/><br/>", out, flags=re.IGNORECASE)
     # Guard against tuple-wrapper leftovers that can survive malformed cache payloads.
     out = re.sub(r"^\s*\(\s*['\"]\s*", "", out)
@@ -879,10 +2679,10 @@ def _assert_reference_and_postprocess_integrity(rendered: str, *, citation_style
     ):
         tag = m.group(0)
         inner = re.sub(r"<[^>]+>", "", str(m.group(1) or "")).strip()
-        title_m = re.search(r'\btitle="([^"]*)"', tag, flags=re.IGNORECASE)
-        href_m = re.search(r'\bhref="([^"]*)"', tag, flags=re.IGNORECASE)
-        title = html.unescape(str(title_m.group(1) if title_m else "")).strip()
-        href = html.unescape(str(href_m.group(1) if href_m else "")).strip()
+        title_m = re.search(r'\btitle\s*=\s*(["\'])(.*?)\1', tag, flags=re.IGNORECASE | re.DOTALL)
+        href_m = re.search(r'\bhref\s*=\s*(["\'])(.*?)\1', tag, flags=re.IGNORECASE | re.DOTALL)
+        title = html.unescape(str(title_m.group(2) if title_m else "")).strip()
+        href = html.unescape(str(href_m.group(2) if href_m else "")).strip()
         if (
             not title
             or re.fullmatch(r"[A-Za-z0-9_-]{8,}(?:#DQ\d{3})?", title)
@@ -976,44 +2776,6 @@ def _build_reference_records(summary: dict[str, Any]) -> list[dict[str, str]]:
     if not isinstance(raw, dict) or not raw:
         raise RuntimeError("No normalized results available for references generation.")
 
-    def _normalize_creator_name(creator: Any) -> str:
-        if isinstance(creator, dict):
-            last = str(creator.get("lastName") or "").strip()
-            if last:
-                return last
-            name = str(creator.get("name") or "").strip()
-            if name:
-                return name
-        s = str(creator or "").strip()
-        if not s:
-            return ""
-        parts = s.replace(",", " ").split()
-        return parts[-1] if parts else s
-
-    def _apa_author_label(item_payload: dict[str, Any]) -> str:
-        metadata = item_payload.get("metadata", {}) if isinstance(item_payload.get("metadata"), dict) else {}
-        first_last = str(metadata.get("first_author_last") or "").strip()
-        if first_last:
-            return first_last
-        creators = []
-        zot = metadata.get("zotero_metadata", {})
-        if isinstance(zot, dict) and isinstance(zot.get("creators"), list):
-            creators = zot.get("creators") or []
-        author_tokens = [_normalize_creator_name(c) for c in creators]
-        author_tokens = [a for a in author_tokens if a]
-        if not author_tokens:
-            fallback = metadata.get("authors")
-            if isinstance(fallback, list):
-                author_tokens = [_normalize_creator_name(x) for x in fallback if str(x or "").strip()]
-                author_tokens = [a for a in author_tokens if a]
-        if not author_tokens:
-            return "Unknown"
-        if len(author_tokens) == 1:
-            return author_tokens[0]
-        if len(author_tokens) == 2:
-            return f"{author_tokens[0]} & {author_tokens[1]}"
-        return f"{author_tokens[0]} et al."
-
     def _iter_item_evidence(item_payload: dict[str, Any]) -> list[tuple[str, str]]:
         rows: list[tuple[str, str]] = []
         for arr_key in ("structured_code", "code_intro_conclusion_extract_core_claims", "code_pdf_page", "evidence_list", "section_open_coding"):
@@ -1043,17 +2805,31 @@ def _build_reference_records(summary: dict[str, Any]) -> list[dict[str, str]]:
                         rows.append((d, q))
         return rows
 
+    collection_name = str(summary.get("collection_name") or "").strip()
+    item_payload_lookup: dict[str, dict[str, Any]] = {}
+    for raw_key, payload in raw.items():
+        if isinstance(payload, dict):
+            item_payload_lookup[str(raw_key).strip().lower()] = payload
+    _augment_item_payload_lookup_with_all_items(
+        item_payload_lookup,
+        collection_name=collection_name,
+    )
+
     rows: list[dict[str, str]] = []
     for i, item_key in enumerate(sorted(raw.keys()), start=1):
         item_payload = raw.get(item_key, {})
         if not isinstance(item_payload, dict):
             continue
         metadata = item_payload.get("metadata", {}) if isinstance(item_payload.get("metadata"), dict) else {}
-        author_label_full = _apa_author_label(item_payload)
+        resolved_md = _resolve_item_reference_metadata(
+            metadata,
+            item_key=str(item_key),
+            item_payload_lookup=item_payload_lookup,
+        )
+        author_label_full = resolved_md["author"]
         author_label = author_label_full.rstrip(".")
-        year_raw = str(metadata.get("year") or "").strip()
-        year = year_raw if year_raw else "n.d."
-        title = str(metadata.get("title") or "").strip() or f"Unresolved source metadata ({item_key})"
+        year = resolved_md["year"]
+        title = resolved_md["title"]
 
         citation_anchor = f"({author_label_full}, {year})"
         pdf_path = str(metadata.get("pdf_path") or "").strip()
@@ -1083,9 +2859,107 @@ def _build_reference_records(summary: dict[str, Any]) -> list[dict[str, str]]:
     return rows
 
 
-def _build_reference_items(summary: dict[str, Any], *, citation_style: str = "apa") -> list[str]:
+def _strip_references_blocks_for_anchor_scan(html_text: str) -> str:
+    text = str(html_text or "")
+    if not text:
+        return text
+    text = re.sub(
+        r"<h[1-6][^>]*>\s*(?:\d+\.\s*)?References\s*</h[1-6]>[\s\S]*$",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    for tag in ("div", "section", "ol", "ul"):
+        text = re.sub(
+            rf"<{tag}[^>]*(?:id|class)=\"[^\"]*references?[^\"]*\"[^>]*>.*?</{tag}>",
+            " ",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    return text
+
+
+def _extract_anchor_dqids_from_html(html_text: str) -> list[str]:
+    scan = _strip_references_blocks_for_anchor_scan(str(html_text or ""))
+    out: list[str] = []
+    for raw in re.findall(r"<a[^>]*\bdata-dqid\s*=\s*[\"']([^\"']+)[\"'][^>]*>", scan, flags=re.IGNORECASE):
+        parts = _split_dqid_values(str(raw or ""))
+        for part in parts:
+            token = str(part or "").strip()
+            if token and token not in out:
+                out.append(token)
+    return out
+
+
+def _derive_anchor_item_keys_from_html(
+    html_text: str,
+    dqid_lookup: dict[str, dict[str, str]],
+) -> list[str]:
+    if not isinstance(dqid_lookup, dict) or not dqid_lookup:
+        return []
+    item_keys: list[str] = []
+    for token in _extract_anchor_dqids_from_html(html_text):
+        dqid, meta = _resolve_dqid_meta(token, dqid_lookup)
+        candidates: list[str] = []
+        if isinstance(meta, dict):
+            mk = str(meta.get("item_key") or "").strip()
+            if mk:
+                candidates.append(mk)
+        if dqid:
+            prefix = dqid.split("#", 1)[0].strip() if "#" in dqid else dqid
+            if prefix and prefix in dqid_lookup:
+                pmeta = dqid_lookup.get(prefix)
+                if isinstance(pmeta, dict):
+                    pmk = str(pmeta.get("item_key") or "").strip()
+                    if pmk:
+                        candidates.append(pmk)
+                if prefix and prefix not in candidates:
+                    candidates.append(prefix)
+            elif prefix:
+                candidates.append(prefix)
+        for key in candidates:
+            if key and key not in item_keys:
+                item_keys.append(key)
+    return item_keys
+
+
+def _filter_reference_records_by_item_keys(
+    records: list[dict[str, str]],
+    anchor_item_keys: list[str] | None,
+) -> list[dict[str, str]]:
+    if anchor_item_keys is None:
+        return list(records)
+    by_key: dict[str, dict[str, str]] = {}
+    for rec in records:
+        if not isinstance(rec, dict):
+            continue
+        key = str(rec.get("item_key") or "").strip().lower()
+        if key and key not in by_key:
+            by_key[key] = rec
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for raw_key in anchor_item_keys:
+        key = str(raw_key or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        rec = by_key.get(key)
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
+
+
+def _build_reference_items(
+    summary: dict[str, Any],
+    *,
+    citation_style: str = "apa",
+    anchor_item_keys: list[str] | None = None,
+) -> list[str]:
     normalized_style = _normalize_citation_style(citation_style)
-    records = _build_reference_records(summary)
+    records = _filter_reference_records_by_item_keys(
+        _build_reference_records(summary),
+        anchor_item_keys=anchor_item_keys,
+    )
     refs: list[str] = []
     for rec in records:
         idx = int(rec.get("index") or "0")
@@ -1122,11 +2996,19 @@ def _build_reference_items(summary: dict[str, Any], *, citation_style: str = "ap
     return refs
 
 
-def _build_notes_block_html(summary: dict[str, Any], *, citation_style: str = "apa") -> str:
+def _build_notes_block_html(
+    summary: dict[str, Any],
+    *,
+    citation_style: str = "apa",
+    anchor_item_keys: list[str] | None = None,
+) -> str:
     normalized_style = _normalize_citation_style(citation_style)
     if normalized_style not in {"numeric", "endnote", "parenthetical_footnote"}:
         return ""
-    records = _build_reference_records(summary)
+    records = _filter_reference_records_by_item_keys(
+        _build_reference_records(summary),
+        anchor_item_keys=anchor_item_keys,
+    )
     items: list[str] = []
     for rec in records:
         idx = int(rec.get("index") or "0")
@@ -1200,40 +3082,25 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
     if not isinstance(raw, dict):
         return [], {}
 
-    def _author_from_item(item_payload: dict[str, Any]) -> str:
-        metadata = item_payload.get("metadata", {}) if isinstance(item_payload.get("metadata"), dict) else {}
-        first_last = str(metadata.get("first_author_last") or "").strip()
-        if first_last:
-            return first_last
-        zot = metadata.get("zotero_metadata", {})
-        creators = zot.get("creators") if isinstance(zot, dict) else None
-        author_tokens: list[str] = []
-        if isinstance(creators, list):
-            for c in creators:
-                if isinstance(c, dict):
-                    last = str(c.get("lastName") or "").strip()
-                    if last:
-                        author_tokens.append(last)
-                        continue
-                    name = str(c.get("name") or "").strip()
-                    if name:
-                        author_tokens.append(name)
-                        continue
-                s = str(c or "").strip()
-                if s:
-                    toks = s.replace(",", " ").split()
-                    author_tokens.append(toks[-1] if toks else s)
-        if not author_tokens:
-            return "Unknown"
-        if len(author_tokens) == 1:
-            return author_tokens[0]
-        if len(author_tokens) == 2:
-            return f"{author_tokens[0]} & {author_tokens[1]}"
-        return f"{author_tokens[0]} et al."
-
+    collection_name = str(summary.get("collection_name") or "").strip()
     payload_rows: list[dict[str, Any]] = []
     dqid_lookup: dict[str, dict[str, str]] = {}
     seen: set[str] = set()
+    item_payload_lookup: dict[str, dict[str, Any]] = {}
+    for raw_key, payload in raw.items():
+        if isinstance(payload, dict):
+            item_payload_lookup[str(raw_key).strip().lower()] = payload
+    _augment_item_payload_lookup_with_all_items(
+        item_payload_lookup,
+        collection_name=collection_name,
+    )
+
+    try:
+        row_limit = int(max_rows)
+    except Exception:
+        row_limit = 0
+    if row_limit <= 0:
+        row_limit = 0  # 0 means unlimited.
 
     for item_index, item_key in enumerate(sorted(raw.keys()), start=1):
         item_payload = raw.get(item_key, {})
@@ -1242,8 +3109,15 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
         metadata = item_payload.get("metadata", {}) if isinstance(item_payload.get("metadata"), dict) else {}
         item_pdf_path = str(metadata.get("pdf_path") or "").strip()
         source_url = _source_url_from_metadata(metadata)
-        author = _author_from_item(item_payload)
-        year = str(metadata.get("year") or "").strip() or "n.d."
+        resolved_md = _resolve_item_reference_metadata(
+            metadata,
+            item_key=str(item_key),
+            item_payload_lookup=item_payload_lookup,
+        )
+        author = resolved_md["author"]
+        year = resolved_md["year"]
+        year_int = _parse_year_int(year)
+        title = resolved_md["title"]
         citation = f"({author}, {year})"
         if str(item_key).strip() and str(item_key) not in dqid_lookup:
             dqid_lookup[str(item_key)] = {
@@ -1253,6 +3127,9 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
                 "item_key": str(item_key),
                 "pdf_path": item_pdf_path,
                 "source_url": source_url,
+                "author": author,
+                "year": year,
+                "title": title,
             }
 
         for arr_key in ("evidence_list", "code_pdf_page", "structured_code", "code_intro_conclusion_extract_core_claims", "section_open_coding"):
@@ -1295,7 +3172,13 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
                         "citation": citation,
                         "item_key": str(item_key),
                         "pdf_path": item_pdf_path,
+                        "year": year_int,
                     }
+                    rq_indices = _extract_relevant_rq_indices(ev.get("relevant_rqs"))
+                    if not rq_indices:
+                        rq_indices = _extract_relevant_rq_indices(outer.get("relevant_rqs"))
+                    if rq_indices:
+                        row["rq_indices"] = rq_indices
                     payload_rows.append(row)
                     page_no = _find_quote_page(item_pdf_path, quote) if item_pdf_path else None
                     dqid_lookup[dqid] = {
@@ -1306,6 +3189,9 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
                         "pdf_path": item_pdf_path,
                         "source_url": source_url,
                         "page_no": str(page_no or ""),
+                        "author": author,
+                        "year": year,
+                        "title": title,
                     }
                     if "#" in dqid:
                         prefix = dqid.split("#", 1)[0].strip()
@@ -1318,8 +3204,11 @@ def _build_dqid_evidence_payload(summary: dict[str, Any], max_rows: int = 120) -
                                 "pdf_path": item_pdf_path,
                                 "source_url": source_url,
                                 "page_no": str(page_no or ""),
+                                "author": author,
+                                "year": year,
+                                "title": title,
                             }
-                    if len(payload_rows) >= int(max_rows):
+                    if row_limit > 0 and len(payload_rows) >= row_limit:
                         return payload_rows, dqid_lookup
     return payload_rows, dqid_lookup
 
@@ -1333,7 +3222,7 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
             continue
         prefix = str(key).split("#", 1)[0].strip()
         citation = str((meta or {}).get("citation") or "").strip()
-        if prefix and citation and prefix not in prefix_citation:
+        if prefix and citation and not _is_source_itemkey_fallback_citation(citation) and prefix not in prefix_citation:
             prefix_citation[prefix] = citation
 
     def _replace_anchor(m: re.Match[str]) -> str:
@@ -1354,9 +3243,22 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
             resolved.append((raw_dqid, {}))
 
         first_dqid, first_meta = resolved[0]
+        prefix = first_dqid.split("#", 1)[0].strip() if "#" in first_dqid else ""
+        prefix_meta = dqid_lookup.get(prefix, {}) if prefix else {}
+        if not isinstance(prefix_meta, dict):
+            prefix_meta = {}
+
         quote = _decode_html_entities(str(first_meta.get("quote") or "").strip())
         citation = _decode_html_entities(str(first_meta.get("citation") or "").strip())
         source_url = _source_url_from_meta_fields(first_meta)
+        if not source_url:
+            source_url = _source_url_from_meta_fields(prefix_meta)
+        if not source_url and len(resolved) > 1:
+            for _, alt_meta in resolved[1:]:
+                candidate = _source_url_from_meta_fields(alt_meta)
+                if candidate:
+                    source_url = candidate
+                    break
 
         index_value: int | None = None
         try:
@@ -1365,16 +3267,22 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
                 index_value = int(str(idx_raw).strip())
         except Exception:
             index_value = None
-        if not citation and "#" in first_dqid:
-            prefix = first_dqid.split("#", 1)[0].strip()
+        if (not citation or _is_source_itemkey_fallback_citation(citation)) and prefix:
             citation = prefix_citation.get(prefix, "")
             if index_value is None:
-                pm = dqid_lookup.get(prefix, {})
                 try:
-                    if pm.get("index") is not None and str(pm.get("index")).strip():
-                        index_value = int(str(pm.get("index")).strip())
+                    if prefix_meta.get("index") is not None and str(prefix_meta.get("index")).strip():
+                        index_value = int(str(prefix_meta.get("index")).strip())
                 except Exception:
                     index_value = None
+
+        if not citation or _is_source_itemkey_fallback_citation(citation):
+            author = str(first_meta.get("author") or prefix_meta.get("author") or "").strip()
+            year = _extract_year_token(first_meta.get("year")) or _extract_year_token(prefix_meta.get("year"))
+            if not year:
+                year = _extract_year_token(first_meta.get("citation")) or _extract_year_token(prefix_meta.get("citation"))
+            if author and year:
+                citation = f"({author}, {year})"
 
         page_value: int | None = None
         try:
@@ -1395,7 +3303,7 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
 
         inner_text = _decode_html_entities(_html_to_text(inner))
         if not citation:
-            if re.match(r"^\([^()]{2,220}\)$", inner_text):
+            if re.match(r"^\([^()]{2,220}\)$", inner_text) and not _is_source_itemkey_fallback_citation(inner_text):
                 citation = inner_text
             else:
                 citation = "(Source citation)"
@@ -1409,7 +3317,15 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
             link_text = f"({lead}; {extra_count} other citations)"
             allow_html = False
 
-        title_source = _decode_html_entities(quote or inner_text)
+        title_meta = _decode_html_entities(str(first_meta.get("title") or prefix_meta.get("title") or "").strip())
+        title_source = _decode_html_entities(quote or "")
+        if not title_source:
+            if title_meta:
+                title_source = title_meta
+            else:
+                title_source = inner_text
+        if re.search(r"\bsource\b", title_source, flags=re.IGNORECASE) and re.search(r"\b1900\b", title_source):
+            title_source = title_meta
         if re.fullmatch(r"[A-Za-z0-9_-]{8,}#DQ\d{3}", title_source) or re.fullmatch(r"[A-Za-z0-9_-]{8,}", title_source):
             title_source = ""
         title = html.escape((title_source[:420] if title_source else "Source excerpt"), quote=True)
@@ -1424,7 +3340,7 @@ def _enrich_dqid_anchors(section_html: str, dqid_lookup: dict[str, dict[str, str
                 if candidate:
                     href_target = candidate
         if not href_target:
-            href_target = "#"
+            href_target = _fallback_source_url_for_dqid(first_dqid, first_meta or prefix_meta)
         data_dqid = ";".join([d for d, _ in resolved]) or raw_dqid
         return (
             f"<a class=\"dqid-cite\" data-dqid=\"{html.escape(data_dqid)}\" "
@@ -1453,16 +3369,31 @@ def _inject_dqid_anchors_if_missing(
     anchors = []
     for dqid in dqids:
         _, meta = _resolve_dqid_meta(dqid, dqid_lookup)
+        prefix = dqid.split("#", 1)[0].strip() if "#" in dqid else ""
+        prefix_meta = dqid_lookup.get(prefix, {}) if prefix else {}
+        if not isinstance(prefix_meta, dict):
+            prefix_meta = {}
         citation = str(meta.get("citation") or "(Source citation)")
+        if _is_source_itemkey_fallback_citation(citation):
+            citation = str(prefix_meta.get("citation") or citation).strip()
+        if _is_source_itemkey_fallback_citation(citation):
+            author = str(meta.get("author") or prefix_meta.get("author") or "").strip()
+            year = _extract_year_token(meta.get("year")) or _extract_year_token(prefix_meta.get("year"))
+            if author and year:
+                citation = f"({author}, {year})"
         idx_val: int | None = None
         try:
             if meta.get("index") is not None and str(meta.get("index")).strip():
                 idx_val = int(str(meta.get("index")).strip())
+            elif prefix_meta.get("index") is not None and str(prefix_meta.get("index")).strip():
+                idx_val = int(str(prefix_meta.get("index")).strip())
         except Exception:
             idx_val = None
         page_no: int | None = None
         try:
             page_raw = meta.get("page_no")
+            if (page_raw is None or not str(page_raw).strip()) and prefix_meta:
+                page_raw = prefix_meta.get("page_no")
             if page_raw is not None and str(page_raw).strip():
                 page_no = int(str(page_raw).strip())
         except Exception:
@@ -1471,9 +3402,14 @@ def _inject_dqid_anchors_if_missing(
             citation = _append_page_to_apa_citation(citation, page_no)
         label, allow_html = _format_intext_citation(citation_style, citation, idx_val)
         label_html = label if allow_html else html.escape(label)
-        quote = _decode_html_entities(str(meta.get("quote") or "").strip())
-        title_src = quote[:420] if quote else "Source excerpt"
-        href = _source_url_from_meta_fields(meta) or "#"
+        quote = _decode_html_entities(str(meta.get("quote") or prefix_meta.get("quote") or "").strip())
+        title_fallback = _decode_html_entities(str(meta.get("title") or prefix_meta.get("title") or "").strip())
+        title_src = quote[:420] if quote else (title_fallback[:420] if title_fallback else "Source excerpt")
+        href = _source_url_from_meta_fields(meta)
+        if not href:
+            href = _source_url_from_meta_fields(prefix_meta)
+        if not href:
+            href = _fallback_source_url_for_dqid(dqid, meta)
         anchors.append(
             f"<a class=\"dqid-cite\" data-dqid=\"{html.escape(dqid)}\" "
             f"href=\"{html.escape(href, quote=True)}\" target=\"_blank\" rel=\"noopener noreferrer\" "
@@ -1932,6 +3868,8 @@ def render_systematic_review_from_summary(
         _write_section_cache(section_cache_path, section_cache_entries)
 
     input_block = summary.get("input", {}) if isinstance(summary.get("input"), dict) else {}
+    research_questions = _extract_research_questions(summary)
+    temporal_mode = _extract_temporal_flag(summary)
     ev_stats = input_block.get("evidence_normalization", {}) if isinstance(input_block.get("evidence_normalization"), dict) else {}
     rq_lines = _rq_findings_lines(summary)
     theme_counts = _compute_theme_counts(summary)
@@ -1976,13 +3914,116 @@ def render_systematic_review_from_summary(
         "overarching_theme": collection_name,
         "item_count": _safe_int(input_block.get("item_count"), 0),
         "evidence_kept": _safe_int(ev_stats.get("evidence_kept"), 0),
+        "research_questions": research_questions,
+        "temporal_mode": bool(temporal_mode),
         "rq_findings": [_humanize_theme_tokens(x) for x in rq_lines],
         "top_themes": [{k: v} for k, v in list(theme_counts.items())[:15]],
     }
     payload_base["citation_style"] = citation_style
     payload_base["top_themes"] = [{_humanize_theme_tokens(str(list(d.keys())[0])): list(d.values())[0]} for d in payload_base["top_themes"]]
-    dqid_payload, dqid_lookup = _build_dqid_evidence_payload(summary, max_rows=5000)
+    full_rows_cap = _env_optional_limit("SYSTEMATIC_FULL_EVIDENCE_ROWS", default=0, max_value=2_000_000)
+    dqid_payload_full, dqid_lookup = _build_dqid_evidence_payload(summary, max_rows=full_rows_cap)
+    ev_rows = _env_int("SYSTEMATIC_SECTION_EVIDENCE_ROWS", 260, min_value=80, max_value=1200)
+    ev_quote_chars = _env_int("SYSTEMATIC_SECTION_QUOTE_CHARS", 220, min_value=80, max_value=800)
+    ev_round_rows = _env_int("SYSTEMATIC_EVIDENCE_ROUND_ROWS", ev_rows, min_value=50, max_value=5000)
+    ev_round_bytes = _env_int("SYSTEMATIC_EVIDENCE_ROUND_BYTES", 1_500_000, min_value=200_000, max_value=50_000_000)
+    evidence_rounds = _split_evidence_rows_into_capped_rounds(
+        dqid_payload_full,
+        row_cap=ev_round_rows,
+        byte_cap=ev_round_bytes,
+        quote_chars=ev_quote_chars,
+    )
+    dqid_payload = (
+        list(evidence_rounds[0].get("compact_rows") or [])
+        if evidence_rounds
+        else _compact_evidence_payload_for_prompt(
+            dqid_payload_full,
+            max_rows=ev_rows,
+            quote_chars=ev_quote_chars,
+        )
+    )
+    rounds_path = output_dir / "evidence_payload_rounds.json"
+    rounds_export = [
+        {
+            "round": int(r.get("round") or 0),
+            "rows_count": int(r.get("rows_count") or 0),
+            "bytes_estimate": int(r.get("bytes_estimate") or 0),
+            "rows": list(r.get("compact_rows") or []),
+        }
+        for r in evidence_rounds
+    ]
+    rounds_manifest_lines = _evidence_round_manifest_lines(evidence_rounds, research_questions)
+    covered_rows = sum(int(r.get("rows_count") or 0) for r in evidence_rounds)
+    rounds_path.write_text(
+        json.dumps(
+            {
+                "schema": "systematic_evidence_payload_rounds_v1",
+                "collection_name": collection_name,
+                "created_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                "row_cap": ev_round_rows,
+                "byte_cap": ev_round_bytes,
+                "rows_total": len(dqid_payload_full),
+                "rows_covered": covered_rows,
+                "round_count": len(evidence_rounds),
+                "round_manifest": rounds_manifest_lines,
+                "rounds": rounds_export,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     payload_base["evidence_payload"] = dqid_payload
+    payload_base["evidence_payload_rounds"] = {
+        "round_count": len(evidence_rounds),
+        "row_cap": int(ev_round_rows),
+        "byte_cap": int(ev_round_bytes),
+        "rows_total": len(dqid_payload_full),
+        "rows_covered": int(covered_rows),
+        "all_rows_covered": bool(len(dqid_payload_full) == covered_rows),
+        "manifest": rounds_manifest_lines,
+        "rounds_path": str(rounds_path),
+    }
+    round_synthesis_html = ""
+    round_synthesis_enabled = _env_bool("SYSTEMATIC_ROUND_SYNTHESIS_ENABLED", default=True)
+    round_synthesis_strict_fail = _env_bool("SYSTEMATIC_ROUND_SYNTHESIS_STRICT_FAIL", default=True)
+    if round_synthesis_enabled and len(dqid_payload_full) > max(1, ev_rows):
+        try:
+            round_synth = _run_round_synthesis_section(
+                payloads=dqid_payload_full,
+                output_dir=output_dir,
+                collection_name=collection_name,
+                research_questions=research_questions,
+                temporal_mode=bool(temporal_mode),
+                model=model,
+                section_timeout_s=int(section_timeout_s),
+                citation_style=citation_style,
+            )
+            if str(round_synth.get("status") or "") == "ok":
+                rr = round_synth.get("result", {}) if isinstance(round_synth.get("result"), dict) else {}
+                final_text = str(rr.get("final_text") or "").strip()
+                if final_text:
+                    round_synthesis_html = final_text
+                payload_base["round_synthesis"] = {
+                    "path": str(round_synth.get("path") or ""),
+                    "coverage": rr.get("coverage") if isinstance(rr.get("coverage"), dict) else {},
+                    "map_rounds": len(rr.get("map_rounds") or []) if isinstance(rr.get("map_rounds"), list) else 0,
+                    "reduce_rounds": len(rr.get("reduce_rounds") or []) if isinstance(rr.get("reduce_rounds"), list) else 0,
+                }
+        except Exception as exc:
+            payload_base["round_synthesis"] = {
+                "status": "error",
+                "error": str(exc),
+            }
+            _dbg("render_systematic_review_from_summary", f"round_synthesis_error err={str(exc)}")
+            if round_synthesis_strict_fail:
+                raise
+    _dbg(
+        "render_systematic_review_from_summary",
+        f"payload_evidence_compacted rows={len(dqid_payload)} quote_chars={ev_quote_chars} "
+        f"full_rows={len(dqid_payload_full)} full_cap={full_rows_cap or 'unlimited'} "
+        f"rounds={len(evidence_rounds)} rows_covered={covered_rows} round_row_cap={ev_round_rows} round_byte_cap={ev_round_bytes}",
+    )
     citation_instruction = _citation_style_instruction(citation_style)
 
     phase1_section_specs = {
@@ -1992,7 +4033,6 @@ def render_systematic_review_from_summary(
         "data_extraction_methods": "Write the Data Extraction methods including fields extracted and reviewer process. Use formal publication prose only; do not mention prompts, context JSON, or AI.",
         "risk_of_bias_methods": "Write Risk of Bias assessment methods and tool usage in concise protocol language. Use formal publication prose only; do not mention prompts, context JSON, or AI.",
         "data_synthesis_methods": "Write the Data Synthesis methods with analytic strategy and rationale. Use formal publication prose only; do not mention prompts, context JSON, or AI.",
-        "narrative_synthesis": "Write the synthesis of results section summarizing findings by research-question groups. Use formal publication prose only; do not mention prompts, context JSON, or AI. Include 1-3 evidence anchors per paragraph and only use dqids provided in evidence_payload.",
         "discussion": "Write the discussion section with interpretation, implications, and disagreements/uncertainty. Use formal publication prose only; do not mention prompts, context JSON, or AI. Include 1-3 evidence anchors per paragraph and only use dqids provided in evidence_payload.",
         "limitations": "Write limitations grounded in available synthesis constraints and data-quality limitations. Use formal publication prose only; do not mention prompts, context JSON, or AI. Include 1-3 evidence anchors per paragraph and only use dqids provided in evidence_payload.",
     }
@@ -2003,7 +4043,7 @@ def render_systematic_review_from_summary(
         "data_extraction_methods": {"min": 110, "max": 1200},
         "risk_of_bias_methods": {"min": 90, "max": 1200},
         "data_synthesis_methods": {"min": 110, "max": 1200},
-        "narrative_synthesis": {"min": 280, "max": 1800},
+        "narrative_synthesis": {"min": 280, "max": 2800},
         "discussion": {"min": 300, "max": 1800},
         "limitations": {"min": 180, "max": 1200},
         "introduction": {"min": 250, "max": 1800},
@@ -2031,6 +4071,15 @@ def render_systematic_review_from_summary(
             if fp.exists():
                 fp.unlink()
 
+        phase1_target_tokens = _env_int("SYSTEMATIC_PHASE1_TARGET_TOKENS", 5200, min_value=1800, max_value=20000)
+        phase1_hard_cap = _env_int("SYSTEMATIC_PHASE1_HARD_CAP_TOKENS", 7600, min_value=2400, max_value=30000)
+        phase1_context_json, phase1_context_meta_json = _prepare_prompt_context_strings(
+            payload_base,
+            target_tokens=phase1_target_tokens,
+            hard_cap_tokens=phase1_hard_cap,
+            label="phase1",
+        )
+
         pending_phase1: list[tuple[str, str]] = []
         for section_name, instruction in phase1_section_specs.items():
             if section_name in section_cache:
@@ -2053,7 +4102,9 @@ def render_systematic_review_from_summary(
                 "INSTRUCTION\n"
                 f"{instruction}\n\n"
                 "CONTEXT_JSON\n"
-                f"{json.dumps(payload_base, ensure_ascii=False, indent=2)}\n\n"
+                f"{phase1_context_json}\n\n"
+                "CONTEXT_META_JSON\n"
+                f"{phase1_context_meta_json}\n\n"
                 "STYLE_GUARD\n"
                 "Write formal publication prose only. Do not mention provided context, context json, prompts, or AI.\n\n"
                 "CITATION_STYLE\n"
@@ -2075,9 +4126,11 @@ def render_systematic_review_from_summary(
             pending_phase1.append((section_name, custom_id))
 
         if pending_phase1:
+            _dbg("render_systematic_review_from_summary", f"phase1_group_batch_start pending={len(pending_phase1)} collection={safe_collection}")
             ok = cm._process_batch_for(analysis_key_suffix=function_name, section_title=safe_collection, poll_interval=30)
             if ok is not True:
                 raise RuntimeError("Phase-1 grouped section batch failed.")
+            _dbg("render_systematic_review_from_summary", "phase1_group_batch_done")
             for section_name, custom_id in pending_phase1:
                 response = cm.read_completion_results(custom_id=custom_id, path=str(output_file), function=function_name)
                 section_html = _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
@@ -2100,6 +4153,14 @@ def render_systematic_review_from_summary(
                 )
                 _write_section_cache(section_cache_path, section_cache_entries)
     else:
+        phase1_target_tokens = _env_int("SYSTEMATIC_PHASE1_TARGET_TOKENS", 5200, min_value=1800, max_value=20000)
+        phase1_hard_cap = _env_int("SYSTEMATIC_PHASE1_HARD_CAP_TOKENS", 7600, min_value=2400, max_value=30000)
+        phase1_context_json, phase1_context_meta_json = _prepare_prompt_context_strings(
+            payload_base,
+            target_tokens=phase1_target_tokens,
+            hard_cap_tokens=phase1_hard_cap,
+            label="phase1",
+        )
         for section_name, instruction in phase1_section_specs.items():
             base_prompt = (
                 "SECTION_NAME\n"
@@ -2107,7 +4168,9 @@ def render_systematic_review_from_summary(
                 "INSTRUCTION\n"
                 f"{instruction}\n\n"
                 "CONTEXT_JSON\n"
-                f"{json.dumps(payload_base, ensure_ascii=False, indent=2)}\n\n"
+                f"{phase1_context_json}\n\n"
+                "CONTEXT_META_JSON\n"
+                f"{phase1_context_meta_json}\n\n"
                 "Return only raw HTML snippets, no markdown fences."
             )
             if section_name in section_cache:
@@ -2178,6 +4241,40 @@ def render_systematic_review_from_summary(
             except TimeoutError as exc:
                 raise RuntimeError(f"Timeout while generating section '{section_name}' after {section_timeout_s}s.") from exc
 
+    narrative_html = _build_results_narrative_html(
+        collection_name=collection_name,
+        model=model,
+        research_questions=research_questions,
+        rows=dqid_payload_full,
+        dqid_lookup=dqid_lookup,
+        citation_style=citation_style,
+        temporal=bool(temporal_mode),
+    )
+    if round_synthesis_html.strip():
+        narrative_html = (
+            f"{narrative_html}"
+            "<h4>Cross-Round Synthesis</h4>"
+            f"{round_synthesis_html}"
+        )
+        narrative_html = _clean_and_humanize_section_html(narrative_html)
+        narrative_html = _enrich_dqid_anchors(narrative_html, dqid_lookup, citation_style=citation_style)
+        narrative_html = _inject_dqid_anchors_if_missing(
+            narrative_html,
+            dqid_lookup,
+            max_anchors=max(6, _env_int("SYSTEMATIC_RQ_CITES_PER_THEME", 3, min_value=1, max_value=10)),
+            citation_style=citation_style,
+        )
+    if narrative_html.strip():
+        llm_sections["narrative_synthesis"] = narrative_html
+        section_cache["narrative_synthesis"] = narrative_html
+        section_cache_entries["narrative_synthesis"] = _make_cache_entry(
+            section_name="narrative_synthesis",
+            html_text=narrative_html,
+            model=model,
+            custom_id="deterministic_results_synthesis",
+        )
+        _write_section_cache(section_cache_path, section_cache_entries)
+
     whole_paper_payload = {
         **payload_base,
         "draft_sections_html": {
@@ -2239,6 +4336,15 @@ def render_systematic_review_from_summary(
             if fp.exists():
                 fp.unlink()
 
+        phase2_target_tokens = _env_int("SYSTEMATIC_PHASE2_TARGET_TOKENS", 6000, min_value=2200, max_value=24000)
+        phase2_hard_cap = _env_int("SYSTEMATIC_PHASE2_HARD_CAP_TOKENS", 8600, min_value=3000, max_value=32000)
+        phase2_context_json, phase2_context_meta_json = _prepare_prompt_context_strings(
+            whole_paper_payload,
+            target_tokens=phase2_target_tokens,
+            hard_cap_tokens=phase2_hard_cap,
+            label="phase2",
+        )
+
         pending_phase2: list[tuple[str, str]] = []
         for section_name, instruction in phase2_section_specs.items():
             if section_name in section_cache:
@@ -2259,7 +4365,9 @@ def render_systematic_review_from_summary(
                 "INSTRUCTION\n"
                 f"{instruction}\n\n"
                 "WHOLE_PAPER_CONTEXT_JSON\n"
-                f"{json.dumps(whole_paper_payload, ensure_ascii=False, indent=2)}\n\n"
+                f"{phase2_context_json}\n\n"
+                "CONTEXT_META_JSON\n"
+                f"{phase2_context_meta_json}\n\n"
                 "STYLE_GUARD\n"
                 "Write formal publication prose only. Do not mention provided context, context json, prompts, or AI.\n\n"
                 "CITATION_STYLE\n"
@@ -2281,9 +4389,11 @@ def render_systematic_review_from_summary(
             pending_phase2.append((section_name, custom_id))
 
         if pending_phase2:
+            _dbg("render_systematic_review_from_summary", f"phase2_group_batch_start pending={len(pending_phase2)} collection={safe_collection}")
             ok = cm._process_batch_for(analysis_key_suffix=function_name, section_title=safe_collection, poll_interval=30)
             if ok is not True:
                 raise RuntimeError("Phase-2 grouped section batch failed.")
+            _dbg("render_systematic_review_from_summary", "phase2_group_batch_done")
             for section_name, custom_id in pending_phase2:
                 response = cm.read_completion_results(custom_id=custom_id, path=str(output_file), function=function_name)
                 section_html = _clean_and_humanize_section_html(_clean_llm_html(_extract_llm_text(response)))
@@ -2303,6 +4413,14 @@ def render_systematic_review_from_summary(
                 )
                 _write_section_cache(section_cache_path, section_cache_entries)
     else:
+        phase2_target_tokens = _env_int("SYSTEMATIC_PHASE2_TARGET_TOKENS", 6000, min_value=2200, max_value=24000)
+        phase2_hard_cap = _env_int("SYSTEMATIC_PHASE2_HARD_CAP_TOKENS", 8600, min_value=3000, max_value=32000)
+        phase2_context_json, phase2_context_meta_json = _prepare_prompt_context_strings(
+            whole_paper_payload,
+            target_tokens=phase2_target_tokens,
+            hard_cap_tokens=phase2_hard_cap,
+            label="phase2",
+        )
         for section_name, instruction in phase2_section_specs.items():
             base_prompt = (
                 "SECTION_NAME\n"
@@ -2310,7 +4428,9 @@ def render_systematic_review_from_summary(
                 "INSTRUCTION\n"
                 f"{instruction}\n\n"
                 "WHOLE_PAPER_CONTEXT_JSON\n"
-                f"{json.dumps(whole_paper_payload, ensure_ascii=False, indent=2)}\n\n"
+                f"{phase2_context_json}\n\n"
+                "CONTEXT_META_JSON\n"
+                f"{phase2_context_meta_json}\n\n"
                 "Return only raw HTML snippets, no markdown fences."
             )
             if section_name in section_cache:
@@ -2416,6 +4536,24 @@ def render_systematic_review_from_summary(
         "ai_discussion": llm_sections["discussion"],
         "ai_limitations": llm_sections["limitations"],
         "ai_conclusion": llm_sections["conclusion"],
+        "references_derived_from_anchor_item_keys": [],
+        "section_generation_provenance": {
+            "abstract": "phase2_whole_paper_llm",
+            "introduction": "phase2_whole_paper_llm",
+            "eligibility_criteria_protocol": "phase1_llm",
+            "search_strategy": "phase1_llm",
+            "study_selection_methods": "phase1_llm",
+            "data_extraction_methods": "phase1_llm",
+            "risk_of_bias_methods": "phase1_llm",
+            "data_synthesis_methods": "phase1_llm",
+            "narrative_synthesis": "deterministic_results_synthesis"
+            + (" + round_synthesis_merge" if round_synthesis_html.strip() else ""),
+            "discussion": "phase1_llm",
+            "limitations": "phase1_llm",
+            "conclusion": "phase2_whole_paper_llm",
+            "references": "anchor_driven_from_text_dqid_to_item_key",
+            "prisma": "deterministic_counts_and_figure",
+        },
     }
 
     appendix_path = output_dir / "search_strategy_appendix.txt"
@@ -2438,13 +4576,15 @@ def render_systematic_review_from_summary(
     rendered = _replace_subsection_content(rendered, "2.4 Data Extraction", llm_sections["data_extraction_methods"])
     rendered = _replace_subsection_content(rendered, "2.5 Risk of Bias Assessment", llm_sections["risk_of_bias_methods"])
     rendered = _replace_subsection_content(rendered, "2.6 Data Synthesis", llm_sections["data_synthesis_methods"])
-    refs = _build_reference_items(summary, citation_style=citation_style)
+    rendered = _anchor_plain_author_year_citations(rendered, dqid_lookup, citation_style=citation_style)
+    anchor_item_keys = _derive_anchor_item_keys_from_html(rendered, dqid_lookup)
+    refs = _build_reference_items(summary, citation_style=citation_style, anchor_item_keys=anchor_item_keys)
+    context["references_derived_from_anchor_item_keys"] = list(anchor_item_keys)
     refs_html = "\n".join(f"      {r}" for r in refs)
     rendered = _replace_references_block(rendered, refs_html)
-    notes_html = _build_notes_block_html(summary, citation_style=citation_style)
+    notes_html = _build_notes_block_html(summary, citation_style=citation_style, anchor_item_keys=anchor_item_keys)
     if notes_html:
         rendered = _append_references_notes_block(rendered, f"\n  {notes_html}\n")
-    rendered = _anchor_plain_author_year_citations(rendered, dqid_lookup, citation_style=citation_style)
     rendered = _strip_editorial_brackets(rendered)
     _assert_non_placeholder_html(rendered)
     _assert_reference_and_postprocess_integrity(rendered, citation_style=citation_style)
@@ -2476,7 +4616,12 @@ def run_pipeline(
     collection_name: str = "",
     coded_dir: Path | None = None,
     build_summary_if_missing: bool = False,
+    temporal: bool = False,
 ) -> dict[str, Any]:
+    _dbg(
+        "run_pipeline",
+        f"start summary_path={str(summary_path or '')} collection_name={str(collection_name or '')} section_single_batch={bool(section_single_batch)}",
+    )
     if not use_llm:
         raise RuntimeError("Strict mode active: run_pipeline requires LLM enabled for section writing.")
     resolved_summary_path = resolve_summary_path(
@@ -2488,6 +4633,12 @@ def run_pipeline(
         build_summary_if_missing=bool(build_summary_if_missing),
     )
     summary = _load_json(resolved_summary_path)
+    if bool(temporal):
+        input_block = summary.get("input")
+        if not isinstance(input_block, dict):
+            input_block = {}
+            summary["input"] = input_block
+        input_block["temporal"] = True
     result = render_systematic_review_from_summary(
         summary=summary,
         template_path=template_path,
@@ -2499,7 +4650,7 @@ def run_pipeline(
         citation_style=str(citation_style),
         prisma_figure_path=Path(prisma_figure_path).expanduser().resolve() if prisma_figure_path else None,
     )
-    return {
+    out = {
         "status": "ok",
         "summary_path": str(resolved_summary_path),
         "systematic_review_html_path": str(result.output_html_path),
@@ -2508,7 +4659,10 @@ def run_pipeline(
         "themes_figure_path": str(result.themes_svg_path),
         "llm_enabled": bool(use_llm),
         "citation_style": str(citation_style),
+        "temporal": bool(temporal),
     }
+    _dbg("run_pipeline", f"done html={out['systematic_review_html_path']}")
+    return out
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -2530,6 +4684,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="In-text citation style for hydrated dqid anchors and references.",
     )
     parser.add_argument("--prisma-figure-path", default="", help="Optional path to an existing PRISMA figure image to use directly.")
+    parser.add_argument("--temporal", action="store_true", help="Enable temporal wave-structured synthesis in Results.")
     return parser
 
 
@@ -2551,6 +4706,7 @@ def main() -> int:
             collection_name=str(args.collection_name),
         coded_dir=coded_dir,
         build_summary_if_missing=bool(args.build_summary_if_missing),
+        temporal=bool(args.temporal),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
